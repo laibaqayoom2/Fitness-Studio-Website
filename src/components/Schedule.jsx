@@ -1,14 +1,28 @@
 // src/components/Schedule.jsx
+import { useState } from 'react'                     
 import Panel from './Panel'
 import { CLASSES, CATEGORIES, DAYS } from '../data'
 
 export default function Schedule() {
+  const [category, setCategory] = useState('All')    
+
+  const visible = category === 'All' ? CLASSES : CLASSES.filter((c) => c.category === category) 
 
   return (
     <Panel id="schedule" tone="bg-panel-alt" kicker="Class Schedule" title={<>This week on <span className="text-brand">the floor</span></>}>
+      <div role="group" aria-label="Filter classes by type" className="mt-8 flex flex-wrap gap-2">
+        {CATEGORIES.map((c) => (
+          <button key={c} type="button" aria-pressed={category === c} onClick={() => setCategory(c)}
+            className={`rounded-full px-4 py-2 text-[0.85rem] font-semibold transition ${category === c ? 'bg-brand text-ink' : 'bg-card text-soft hover:text-white'}`}>
+            {c}
+          </button>
+        ))}
+      </div>
       <p aria-live="polite" className="mt-4 text-[0.85rem] text-muted">
         {visible.length} classes &middot; {total} {total === 1 ? 'spot' : 'spots'} booked
       </p>
+
+      {/* commit 1: days rendered from data (auto-fill so one day card doesn't stretch full width) */}
       <div className="mt-6 grid grid-cols-[repeat(auto-fill,minmax(min(100%,19rem),1fr))] gap-3">
         {DAYS.map((day) => {
           const slots = visible.filter((c) => c.day === day)
