@@ -7,9 +7,10 @@ import Footer from './components/Footer'
 export default function App() {
   return (
     <>
-      <a href="#main" className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-30 focus:bg-white focus:px-4 focus:py-2 focus:text-black">
+      {/* <a href="#main" className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-30 focus:bg-white focus:px-4 focus:py-2 focus:text-black">
         Skip to content
-      </a>
+      </a> */}
+      <title>FFL Studio | Fitness & Personal Training</title>
       <Header />
       <main id="main">
         <Hero />
