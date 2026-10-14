@@ -1,6 +1,6 @@
 // src/App.jsx
 import Header from './components/Header'
-import Hero from './components/Hero'
+import  Hero from './components/Hero'
 import MainPage from './components/MainPage'
 import Footer from './components/Footer'
 

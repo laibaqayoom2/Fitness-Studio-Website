@@ -1,20 +1,20 @@
 // src/components/Schedule.jsx
-import { useState } from 'react'                      // commit 2
+import { useState } from 'react'                      
 import Panel from './Panel'
-import SpotsStepper from './SpotsStepper'             // commit 3
+import SpotsStepper from './SpotsStepper'        
 import { CLASSES, CATEGORIES, DAYS } from '../data'
 
 export default function Schedule() {
-  const [category, setCategory] = useState('All')     // commit 2: filter state
-  const [booked, setBooked] = useState({})            // commit 3: { [classId]: spots }
+  const [category, setCategory] = useState('All')     
+  const [booked, setBooked] = useState({})            
 
-  const visible = category === 'All' ? CLASSES : CLASSES.filter((c) => c.category === category) // commit 2
-  const total = Object.values(booked).reduce((sum, n) => sum + n, 0)                           // commit 3
-  const setSpots = (id, n) => setBooked((prev) => ({ ...prev, [id]: n }))                      // commit 3
+  const visible = category === 'All' ? CLASSES : CLASSES.filter((c) => c.category === category) 
+  const total = Object.values(booked).reduce((sum, n) => sum + n, 0)                     
+  const setSpots = (id, n) => setBooked((prev) => ({ ...prev, [id]: n }))                
 
   return (
     <Panel id="schedule" tone="bg-panel-alt" kicker="Class Schedule" title={<>This week on <span className="text-brand">the floor</span></>}>
-      {/* commit 2: filter buttons */}
+
       <div role="group" aria-label="Filter classes by type" className="mt-8 flex flex-wrap gap-2">
         {CATEGORIES.map((c) => (
           <button key={c} type="button" aria-pressed={category === c} onClick={() => setCategory(c)}
@@ -27,7 +27,7 @@ export default function Schedule() {
         {visible.length} classes &middot; {total} {total === 1 ? 'spot' : 'spots'} booked
       </p>
 
-      {/* commit 1: days rendered from data (auto-fill so one day card doesn't stretch full width) */}
+     
       <div className="mt-6 grid grid-cols-[repeat(auto-fill,minmax(min(100%,19rem),1fr))] gap-3">
         {DAYS.map((day) => {
           const slots = visible.filter((c) => c.day === day)
@@ -43,7 +43,7 @@ export default function Schedule() {
                       <strong className="block font-semibold">{c.name}</strong>
                       <span className="text-[0.75rem] text-muted">{c.coach}</span>
                     </div>
-                    {/* commit 3: controlled stepper */}
+
                     <SpotsStepper label={`Spots for ${c.name} on ${day}`} max={c.spots}
                       value={booked[c.id] ?? 0} onChange={(n) => setSpots(c.id, n)} />
                   </li>

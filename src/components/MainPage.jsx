@@ -1,4 +1,4 @@
-// src/components/MainContent.jsx
+// src/components/MainPage.jsx
 import About from './About'
 import Services from './Services'
 import Why from './Why'
