@@ -3,24 +3,29 @@ import { useState, useRef, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import Panel from './Panel'
 import SpotsStepper from './SpotsStepper'
-import { CLASSES, CATEGORIES, DAYS } from '../data'
+import { CLASSES, DAYS } from '../data'
 
 export default function Schedule() {
-  const [category, setCategory] = useState('All')      // which filter is active
+  // Open on today's tab (Mon-first index); Sunday has no tab, so fall back to Mon
+  const [day, setDay] = useState(() => DAYS[(new Date().getDay() + 6) % 7] ?? 'Mon')
   const [booked, setBooked] = useState({})             // { [classId]: spots }
   const [confirmedAt, setConfirmedAt] = useState(null) // null, or the Date it was confirmed
   const [view, setView] = useState(null)               // null (closed) | 'review' | 'confirmed'
   const dialogRef = useRef(null)
 
+  // Derived values: calculated every render, never stored
   const confirmed = confirmedAt !== null
-  const visible = category === 'All' ? CLASSES : CLASSES.filter((c) => c.category === category)
+  const visible = CLASSES.filter((c) => c.day === day)
   const bookedClasses = CLASSES.filter((c) => (booked[c.id] ?? 0) > 0)
   const total = Object.values(booked).reduce((sum, n) => sum + n, 0)
   const plural = total === 1 ? 'spot' : 'spots'
+  const picksOn = (d) =>
+    CLASSES.filter((c) => c.day === d).reduce((sum, c) => sum + (booked[c.id] ?? 0), 0)
 
   // Keep the native <dialog> in sync with the `view` state
   useEffect(() => {
     const d = dialogRef.current
+    if (!d) return        
     if (view && !d.open) d.showModal()
     else if (!view && d.open) d.close()
   }, [view])
@@ -40,55 +45,67 @@ export default function Schedule() {
     setView('confirmed')
   }
 
-  const lines = (
-    <ul className="mt-3 space-y-1 text-[0.9rem] text-soft">
-      {bookedClasses.map((c) => (
-        <li key={c.id}>{c.day} {c.time} &middot; {c.name} &times; {booked[c.id]}</li>
-      ))}
-    </ul>
-  )
   const ghost = 'rounded-full border border-line px-5 py-2 text-[0.85rem] transition hover:border-brand'
 
   return (
     <Panel id="schedule" tone="bg-panel-alt" kicker="Class Schedule"
       title={<>This week on <span className="text-brand">the floor</span></>}>
-      <div role="group" aria-label="Filter classes by type" className="mt-8 flex flex-wrap gap-2">
-        {CATEGORIES.map((c) => (
-          <button key={c} type="button" aria-pressed={category === c} onClick={() => setCategory(c)}
-            className={`rounded-full px-4 py-2 text-[0.85rem] font-semibold transition ${category === c ? 'bg-brand text-ink' : 'bg-card text-soft hover:text-white'}`}>
-            {c}
-          </button>
-        ))}
-      </div>
 
-      <p aria-live="polite" className="mt-4 text-[0.85rem] text-muted">
-        {visible.length} classes &middot; {total} {plural} booked
-      </p>
-
-      <div className="mt-6 grid grid-cols-[repeat(auto-fill,minmax(min(100%,19rem),1fr))] gap-3">
-        {DAYS.map((day) => {
-          const slots = visible.filter((c) => c.day === day)
-          if (slots.length === 0) return null
+      {/* Day tabs: this is the filter */}
+      <div role="group" aria-label="Choose a day" className="mt-8 grid grid-cols-6 gap-1.5 sm:max-w-md">
+        {DAYS.map((d) => {
+          const picks = picksOn(d)
           return (
-            <article key={day} className="rounded-2xl bg-card px-4 pb-2 pt-4 transition hover:-translate-y-1 hover:shadow-2xl">
-              <h3 className="mb-1 text-[1.1rem] text-brand">{day}</h3>
-              <ul>
-                {slots.map((c) => (
-                  <li key={c.id} className="grid grid-cols-[3rem_minmax(0,1fr)_auto] items-center gap-x-2.5 border-t border-line py-3 text-[0.9rem] leading-tight">
-                    <time className="text-muted tabular-nums">{c.time}</time>
-                    <div className="min-w-0">
-                      <strong className="block font-semibold">{c.name}</strong>
-                      <span className="text-[0.75rem] text-muted">{c.coach}</span>
-                    </div>
-                    <SpotsStepper label={`Spots for ${c.name} on ${day}`} max={c.spots}
-                      value={booked[c.id] ?? 0} onChange={(n) => setSpots(c.id, n)} />
-                  </li>
-                ))}
-              </ul>
-            </article>
+            <button key={d} type="button" aria-pressed={day === d} onClick={() => setDay(d)}
+              className={`relative rounded-xl py-2.5 text-[0.85rem] font-semibold transition ${day === d ? 'bg-brand text-ink' : 'bg-card text-soft hover:text-white'}`}>
+              {d}
+              {picks > 0 && (
+                <span className="absolute -right-1 -top-1 grid size-5 place-items-center rounded-full bg-white text-[0.65rem] font-bold text-ink">
+                  <span className="sr-only">booked: </span>{picks}
+                </span>
+              )}
+            </button>
           )
         })}
       </div>
+
+      <p aria-live="polite" className="mt-4 text-[0.85rem] text-muted">
+        {visible.length} classes on {day} &middot; {total} {plural} booked in total
+      </p>
+
+      {/* Class cards for the chosen day */}
+      <ul className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+        {visible.map((c) => {
+          const mine = booked[c.id] ?? 0
+          const left = c.spots - mine // spots still open after your picks
+          return (
+            <li key={c.id}
+              className={`flex min-w-0 flex-col gap-4 rounded-3xl border bg-card p-5 transition hover:-translate-y-1 hover:shadow-2xl ${mine > 0 ? 'border-brand' : 'border-transparent'}`}>
+              <div className="flex items-center justify-between gap-2">
+                <p className="rounded-full bg-brand/15 px-3 py-1 text-[0.75rem] font-bold text-brand">{c.time}</p>
+                <span className="text-[0.75rem] text-muted">{c.category}</span>
+              </div>
+
+              <div>
+                <h3 className="text-[1.2rem] font-bold">{c.name}</h3>
+                <p className="mt-1 text-[0.85rem] text-muted">{c.coach}</p>
+              </div>
+
+              <div className="mt-auto">
+                <div className="h-1.5 overflow-hidden rounded-full bg-white/10" aria-hidden="true">
+                  <div className="h-full rounded-full bg-brand transition-all duration-300"
+                    style={{ width: `${(left / c.spots) * 100}%` }} />
+                </div>
+                <div className="mt-3 flex items-center justify-between gap-3">
+                  <span className="text-[0.8rem] text-muted">{left} of {c.spots} spots left</span>
+                  <SpotsStepper label={`Spots for ${c.name} on ${c.day}`} max={c.spots}
+                    value={mine} onChange={(n) => setSpots(c.id, n)} />
+                </div>
+              </div>
+            </li>
+          )
+        })}
+      </ul>
 
       {/* Sticky bar: appears once something is selected and the dialog is closed */}
       {total > 0 && view === null && createPortal(
@@ -122,7 +139,12 @@ export default function Schedule() {
               You reserved {total} {plural}. See you on the floor.
             </p>
           )}
-          {lines}
+
+          <ul className="mt-3 space-y-1 text-[0.9rem] text-soft">
+            {bookedClasses.map((c) => (
+              <li key={c.id}>{c.day} {c.time} &middot; {c.name} &times; {booked[c.id]}</li>
+            ))}
+          </ul>
 
           <div className="mt-6 flex flex-wrap gap-3">
             {view === 'review' && (
@@ -141,7 +163,9 @@ export default function Schedule() {
                 <button type="button" onClick={() => { setConfirmedAt(null); setView(null) }} className={ghost}>
                   Edit booking
                 </button>
-                <button type="button" onClick={() => setView(null)} className={ghost}>Close</button>
+                <button type="button" onClick={clearBooking} className={ghost}>
+                  Clear booking
+                </button>
               </>
             )}
           </div>
