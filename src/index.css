@@ -59,3 +59,8 @@
   }
   details[open]::details-content { block-size: auto; }
 }
+
+@media print {
+  #root { display: none; }              /* hide the whole site */
+  body { background: #fff; color: #000; }
+}
