@@ -1,21 +1,25 @@
 // src/components/Footer.jsx
+import { Link, useLocation } from 'react-router-dom'
 import { NAV, HOURS, SOCIAL } from '../data'
 
 const title = 'mb-4 text-[0.8rem] font-semibold uppercase tracking-[0.06em] text-white'
 const link = 'transition-colors hover:text-white'
 
 export default function Footer() {
+  const { pathname } = useLocation()
+  const sectionTo = (href) => (pathname === '/' ? href : `/${href}`)
+
   return (
     <footer id="contact" className="border-t border-line bg-ink px-pad pb-6 pt-16 text-[0.85rem] text-muted">
       <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-[1.6fr_1fr_1fr_1.3fr] lg:gap-10">
         <div>
-          <a href="#top"><img src="/images/logo.png" alt="FFL Studio" width="412" height="165" className="h-[2.8rem] w-auto" /></a>
+          <Link to="/#top"><img src="/images/logo.png" alt="FFL Studio" width="412" height="165" className="h-[2.8rem] w-auto" /></Link>
           <p className="mb-5 mt-4 max-w-[28ch]">Fit For Life. Strong today. Stronger tomorrow.</p>
-          <a href="#join" className="inline-block rounded-full border border-line bg-card px-4 py-2 text-white transition-colors hover:border-brand">Start your free trial</a>
+          <Link to={sectionTo('#join')} className="inline-block rounded-full border border-line bg-card px-4 py-2 text-white transition-colors hover:border-brand">Start your free trial</Link>
         </div>
         <nav aria-label="Footer">
           <h2 className={title}>Explore</h2>
-          <ul className="grid gap-2.5">{NAV.map((n) => <li key={n.href}><a className={link} href={n.href}>{n.label}</a></li>)}</ul>
+          <ul className="grid gap-2.5">{NAV.map((n) => <li key={n.href}><Link className={link} to={sectionTo(n.href)}>{n.label}</Link></li>)}</ul>
         </nav>
         <div>
           <h2 className={title}>Opening hours</h2>
@@ -38,9 +42,9 @@ export default function Footer() {
       <div className="mt-12 flex flex-wrap justify-between gap-x-8 gap-y-4 border-t border-line pt-6 text-[0.8rem]">
         <p>&copy; 2026 FFL Studio. All rights reserved.</p>
         <ul className="flex flex-wrap gap-x-6 gap-y-1">
-          <li><a className={link} href="#top">Privacy</a></li>
-          <li><a className={link} href="#top">Terms</a></li>
-          <li><a className={link} href="#top">Back to top &uarr;</a></li>
+          <li><Link className={link} to="/#top">Privacy</Link></li>
+          <li><Link className={link} to="/#top">Terms</Link></li>
+          <li><Link className={link} to="/#top">Back to top &uarr;</Link></li>
         </ul>
       </div>
     </footer>

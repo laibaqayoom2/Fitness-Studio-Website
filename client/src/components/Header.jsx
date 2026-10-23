@@ -1,12 +1,21 @@
 import { useEffect, useRef, useState } from 'react'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { NAV } from '../data'
+import { useAuth } from '../auth/AuthContext'
+
+const navLink = 'block py-2 text-[#e8e8ea] transition-colors hover:text-brand md:py-0'
 
 export default function Header() {
   const [open, setOpen] = useState(false)
   const headerRef = useRef(null)
+  const { pathname } = useLocation()
+  const navigate = useNavigate()
+  const { user, loading, logout } = useAuth()
   const close = () => setOpen(false)
 
-  // Close the mobile menu with Esc or a click outside the header
+  const canManage = user?.role === 'admin' || user?.role === 'manager'
+  const sectionTo = (href) => (pathname === '/' ? href : `/${href}`)
+
   useEffect(() => {
     if (!open) return
     const onKeyDown = (e) => { if (e.key === 'Escape') setOpen(false) }
@@ -21,11 +30,17 @@ export default function Header() {
     }
   }, [open])
 
+  const handleLogout = async () => {
+    close()
+    await logout()
+    navigate('/')
+  }
+
   return (
     <header ref={headerRef} className="fixed left-1/2 top-3.5 z-20 flex w-[min(1180px,calc(100%-2rem))] -translate-x-1/2 flex-wrap items-center justify-between gap-2 rounded-3xl border border-line bg-[rgb(32_26_24/0.85)] px-4 py-3 backdrop-blur-md md:rounded-full md:py-2.5 md:pl-6 md:pr-3">
-      <a href="#top" onClick={close} className="flex flex-none items-center">
+      <Link to="/#top" onClick={close} className="flex flex-none items-center">
         <img src="/images/logo.png" alt="FFL Studio" width="412" height="165" className="h-[2.4rem] w-auto" />
-      </a>
+      </Link>
 
       <button
         type="button"
@@ -48,18 +63,69 @@ export default function Header() {
         <ul className="flex flex-col py-2 text-[0.95rem] md:flex-row md:gap-x-6 md:py-0 md:text-[0.85rem]">
           {NAV.map((item) => (
             <li key={item.href}>
-              <a href={item.href} onClick={close} className="block py-2 text-[#e8e8ea] transition-colors hover:text-brand md:py-0">
+              <Link to={sectionTo(item.href)} onClick={close} className={navLink}>
                 {item.label}
-              </a>
+              </Link>
             </li>
           ))}
-          <li className="mt-2 md:hidden">
-            <a href="#join" onClick={close} className="btn block text-center">Free Trial</a>
+
+          <li className="mt-3 border-t border-line pt-3 md:hidden">
+            {loading ? (
+              <p className="py-2 text-[0.85rem] text-muted">Checking your session...</p>
+            ) : user ? (
+              <div className="grid gap-2">
+                <p className="text-[0.8rem] text-muted">
+                  Signed in as <span className="text-white">{user.name}</span>
+                  {canManage && <span className="ml-1 text-brand">({user.role})</span>}
+                </p>
+                {canManage && (
+                  <Link to="/admin" onClick={close} className="rounded-full border border-line px-4 py-2 text-center text-white transition hover:border-brand">
+                    Dashboard
+                  </Link>
+                )}
+                <button type="button" onClick={handleLogout} className="rounded-full border border-line px-4 py-2 text-center text-white transition hover:border-brand">
+                  Log out
+                </button>
+              </div>
+            ) : (
+              <div className="grid gap-2">
+                <Link to="/login" onClick={close} className="rounded-full border border-line px-4 py-2 text-center text-white transition hover:border-brand">
+                  Log in
+                </Link>
+                <Link to="/signup" onClick={close} className="btn block text-center">Sign up</Link>
+              </div>
+            )}
           </li>
         </ul>
       </nav>
 
-      <a href="#join" className="btn hidden px-5 py-2 text-[0.85rem] md:inline-block">Free Trial</a>
+      <div className="hidden items-center gap-4 md:flex">
+        {loading ? (
+          <span className="text-[0.8rem] text-muted">...</span>
+        ) : user ? (
+          <>
+            <span className="max-w-44 truncate text-[0.8rem] text-muted">
+              {user.name}
+              {canManage && <span className="ml-1 text-brand">({user.role})</span>}
+            </span>
+            {canManage && (
+              <Link to="/admin" className="rounded-full border border-line px-4 py-2 text-[0.8rem] text-white transition hover:border-brand">
+                Dashboard
+              </Link>
+            )}
+            <button type="button" onClick={handleLogout} className="rounded-full border border-line px-4 py-2 text-[0.8rem] text-white transition hover:border-brand">
+              Log out
+            </button>
+          </>
+        ) : (
+          <>
+            <Link to="/login" className="text-[0.85rem] text-soft transition-colors hover:text-white">
+              Log in
+            </Link>
+            <Link to="/signup" className="btn px-5 py-2 text-[0.85rem]">Sign up</Link>
+          </>
+        )}
+      </div>
     </header>
   )
 }
