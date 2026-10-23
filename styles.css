@@ -525,6 +525,7 @@ a {
   aspect-ratio: 1;
   object-fit: cover;
   transition: transform 0.5s ease;
+  max-height:30rem;
 }
 
 .accordion {
