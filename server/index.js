@@ -580,16 +580,16 @@ app.use((err, req, res, next) => {
   res.status(status).json({ error: status === 500 ? 'Something went wrong' : err.message })
 })
 
-// const server = app.listen(port, () => console.log(`API running on http://localhost:${port}`))
 if (!process.env.VERCEL) {
-  app.listen(PORT, () => console.log(`API running on ${port}`));
-}
-export default app;
+  const server = app.listen(port, () => console.log(`API running on http://localhost:${port}`))
 
-server.on('error', (err) => {
-  if (err.code === 'EADDRINUSE') {
-    console.error(`Port ${port} is already in use. Stop the other server or set PORT to a different value.`)
-    process.exit(1)
-  }
-  throw err
-})
+  server.on('error', (err) => {
+    if (err.code === 'EADDRINUSE') {
+      console.error(`Port ${port} is already in use. Stop the other server or set PORT to a different value.`)
+      process.exit(1)
+    }
+    throw err
+  })
+}
+
+export default app
