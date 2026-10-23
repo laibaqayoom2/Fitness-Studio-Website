@@ -25,6 +25,7 @@ const EDIT_ROLES = ['manager', 'admin']
 app.use(cors({ origin: allowedOrigins, credentials: true }))
 app.use(cookieParser())
 app.use(express.json())
+app.set("trust proxy", 1);
 app.use('/api', attachUser)
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -579,7 +580,11 @@ app.use((err, req, res, next) => {
   res.status(status).json({ error: status === 500 ? 'Something went wrong' : err.message })
 })
 
-const server = app.listen(port, () => console.log(`API running on http://localhost:${port}`))
+// const server = app.listen(port, () => console.log(`API running on http://localhost:${port}`))
+if (!process.env.VERCEL) {
+  app.listen(PORT, () => console.log(`API running on ${port}`));
+}
+export default app;
 
 server.on('error', (err) => {
   if (err.code === 'EADDRINUSE') {

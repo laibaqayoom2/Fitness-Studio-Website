@@ -22,13 +22,16 @@ export default function useCarousel(
   const [focused, setFocused] = useState(false)
   const [userPaused, setUserPaused] = useState(false)
 
-  const measure = useCallback(() => {
-    const el = trackRef.current
-    if (!el) return
-    const max = el.scrollWidth - el.clientWidth
-    setAtStart(el.scrollLeft <= EDGE)
-    setAtEnd(el.scrollLeft >= max - EDGE)
-  }, [trackRef])
+ const measure = useCallback(() => {
+  const el = trackRef.current
+  if (!el) return
+
+  const max = Math.max(0, el.scrollWidth - el.clientWidth)
+  const hasOverflow = max > EDGE
+
+  setAtStart(!hasOverflow || el.scrollLeft <= EDGE)
+  setAtEnd(!hasOverflow || el.scrollLeft >= max - EDGE)
+}, [trackRef])
 
   const stepSize = useCallback(() => {
     const el = trackRef.current
