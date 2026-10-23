@@ -1,0 +1,188 @@
+import { useState } from 'react'
+import { apiDelete, apiPost, apiPut } from '../../api'
+import useFetch from '../../hooks/useFetch'
+import { Empty, Field, Notice, SectionHeader, Table, Td } from './ui'
+import { cardClass, dangerButton, inputClass, primaryButton, secondaryButton } from './styles'
+
+const emptyForm = {
+  name: '',
+  role: '',
+  img: 'trainer-amara.webp',
+  bio: '',
+  email: '',
+  password: '',
+}
+
+export default function TrainersPanel() {
+  const { data, loading, error, refetch } = useFetch('/api/trainers')
+  const trainers = data ?? []
+  const [form, setForm] = useState(emptyForm)
+  const [editingId, setEditingId] = useState(null)
+  const [saving, setSaving] = useState(false)
+  const [formError, setFormError] = useState(null)
+  const [success, setSuccess] = useState(null)
+
+  const update = (key) => (e) => setForm((prev) => ({ ...prev, [key]: e.target.value }))
+
+  const reset = () => {
+    setEditingId(null)
+    setForm(emptyForm)
+    setFormError(null)
+  }
+
+  const edit = (trainer) => {
+    setEditingId(trainer.id)
+    setForm({
+      name: trainer.name,
+      role: trainer.role,
+      img: trainer.img,
+      bio: trainer.bio,
+      email: '',
+      password: '',
+    })
+    setFormError(null)
+    setSuccess(null)
+  }
+
+  const submit = async (e) => {
+    e.preventDefault()
+    if (saving) return
+    setFormError(null)
+    setSuccess(null)
+    setSaving(true)
+
+    try {
+      const payload = {
+        name: form.name.trim(),
+        role: form.role.trim(),
+        img: form.img.trim(),
+        bio: form.bio.trim(),
+      }
+
+      if (!editingId && (form.email.trim() || form.password)) {
+        payload.email = form.email.trim()
+        payload.password = form.password
+      }
+
+      if (editingId) await apiPut(`/api/trainers/${editingId}`, payload)
+      else await apiPost('/api/trainers', payload)
+
+      setSuccess(editingId ? 'Trainer updated.' : credentialsMessage(form))
+      setEditingId(null)
+      setForm(emptyForm)
+      refetch()
+    } catch (err) {
+      setFormError(err.message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const remove = async (trainer) => {
+    if (!window.confirm(`Delete trainer ${trainer.name}? Their login, if any, is kept in Users.`)) return
+    setFormError(null)
+    setSuccess(null)
+
+    try {
+      await apiDelete(`/api/trainers/${trainer.id}`)
+      if (editingId === trainer.id) reset()
+      setSuccess('Trainer deleted.')
+      refetch()
+    } catch (err) {
+      setFormError(err.message)
+    }
+  }
+
+  return (
+    <div>
+      <SectionHeader
+        title="Trainers"
+        description="Add coaches to the public team section. Creating a trainer with an email and password also makes them a manager who can sign in and manage classes and bookings."
+      />
+
+      <div className={cardClass}>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h3 className="font-bold">{editingId ? 'Edit trainer' : 'Add a trainer'}</h3>
+          {editingId && (
+            <button type="button" onClick={reset} className={secondaryButton}>Cancel edit</button>
+          )}
+        </div>
+
+        <form onSubmit={submit} className="mt-4 grid gap-4 sm:grid-cols-2">
+          <Field label="Name">
+            <input type="text" required value={form.name} onChange={update('name')} className={inputClass} placeholder="Amara Okoye" />
+          </Field>
+          <Field label="Specialty / role">
+            <input type="text" required value={form.role} onChange={update('role')} className={inputClass} placeholder="Strength & Conditioning" />
+          </Field>
+          <Field label="Image filename" hint="A file in client/public/images, e.g. trainer-amara.webp">
+            <input type="text" required value={form.img} onChange={update('img')} className={inputClass} placeholder="trainer-amara.webp" />
+          </Field>
+          <Field label="Bio">
+            <textarea required rows="3" value={form.bio} onChange={update('bio')} className={inputClass} placeholder="A short introduction for the team section." />
+          </Field>
+
+          {!editingId && (
+            <div className="sm:col-span-2 rounded-2xl border border-line bg-ink/30 p-4">
+              <p className="text-[0.8rem] font-semibold text-white">Manager login (optional)</p>
+              <p className="mt-1 text-[0.75rem] text-muted">
+                Leave both fields blank for a profile-only trainer. If you add login details, the account gets the manager role.
+              </p>
+              <div className="mt-3 grid gap-4 sm:grid-cols-2">
+                <Field label="Account email">
+                  <input type="email" autoComplete="off" value={form.email} onChange={update('email')} className={inputClass} placeholder="trainer@ffl.com" />
+                </Field>
+                <Field label="Account password" hint="At least 8 characters">
+                  <input type="password" autoComplete="new-password" value={form.password} onChange={update('password')} className={inputClass} placeholder="Set a password" />
+                </Field>
+              </div>
+            </div>
+          )}
+
+          <div className="sm:col-span-2">
+            <button type="submit" disabled={saving} className={primaryButton}>
+              {saving ? 'Saving...' : editingId ? 'Save changes' : 'Add trainer'}
+            </button>
+          </div>
+        </form>
+
+        <Notice error={formError} success={success} />
+      </div>
+
+      {error && <p role="alert" className="mt-5 text-[0.85rem] text-red-300">Could not load trainers: {error}</p>}
+      {loading && !data && <p className="mt-5 text-[0.85rem] text-muted">Loading trainers...</p>}
+      {!loading && !error && trainers.length === 0 && <Empty>No trainers yet. Add the first one above.</Empty>}
+
+      {trainers.length > 0 && (
+        <Table columns={['Trainer', 'Specialty', 'Manager login', 'Actions']}>
+          {trainers.map((trainer) => (
+            <tr key={trainer.id}>
+              <Td>
+                <p className="font-semibold text-white">{trainer.name}</p>
+                <p className="mt-0.5 max-w-[38ch] text-[0.75rem] text-muted">{trainer.bio}</p>
+              </Td>
+              <Td>{trainer.role}</Td>
+              <Td>
+                {trainer.has_account
+                  ? <span className="rounded-full bg-green-500/15 px-2.5 py-1 text-[0.7rem] font-semibold text-green-300">Linked</span>
+                  : <span className="text-[0.75rem] text-muted">None</span>}
+              </Td>
+              <Td>
+                <div className="flex flex-wrap gap-2">
+                  <button type="button" onClick={() => edit(trainer)} className={secondaryButton}>Edit</button>
+                  <button type="button" onClick={() => remove(trainer)} className={dangerButton}>Delete</button>
+                </div>
+              </Td>
+            </tr>
+          ))}
+        </Table>
+      )}
+    </div>
+  )
+}
+
+function credentialsMessage(form) {
+  return form.email.trim()
+    ? `Trainer added and manager login created for ${form.email.trim()}.`
+    : 'Trainer added.'
+}
