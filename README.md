@@ -18,6 +18,8 @@ A marketing site for FFL Studio with a class schedule, booking flow, accounts, a
   - **admin** — full access: trainers, classes, bookings, plans, users, and roles.
 - Admin dashboard at `/admin` with role-aware tabs.
 - Admin-created trainer accounts are automatically linked to the trainer profile and given the `manager` role.
+- Members see their own bookings in a header menu, refreshed immediately after booking.
+- Days with three or more classes switch from a grid to a swipeable slider; coaches autoplay in a carousel that pauses on hover, focus, or from the pause button.
 
 ## Structure
 
@@ -36,18 +38,21 @@ client/
       AuthContext.js      Auth context + useAuth hook
       AuthProvider.jsx    Session bootstrap, login/signup/logout
     hooks/useFetch.js     GET hook with loading/error state and refetch
+    hooks/useCarousel.js  Scroll-snap carousel: arrows, autoplay, pause state
     components/
       SiteLayout.jsx      Header, routed main outlet, footer, hash scrolling
       Panel.jsx           Shared section wrapper (id, kicker, title, reveal)
-      Header.jsx          Fixed nav, auth links, mobile menu
+      Header.jsx          Fixed nav, auth links, member bookings, mobile menu
+      CarouselArrows.jsx  Previous/next controls shared by both carousels
+      MemberBookings.jsx  Member booking menu (desktop) and list (mobile)
       Hero.jsx            Hero section and social proof
       MainPage.jsx        Composes the content sections
       About.jsx           Intro copy, stats and gym video
       Services.jsx        Service cards
       Why.jsx             Accordion of benefits
-      Schedule.jsx        Weekly schedule and server-backed booking flow
+      Schedule.jsx        Weekly schedule; grid or slider plus booking flow
       SpotsStepper.jsx    Controlled spot counter used by Schedule
-      Trainers.jsx        Coach profiles (API)
+      Trainers.jsx        Autoplay coach carousel (API)
       Plans.jsx           Membership tiers (API)
       Cta.jsx             Free-trial call to action
       Footer.jsx          Hours, contact and social links

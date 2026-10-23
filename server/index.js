@@ -7,7 +7,7 @@ import cookieParser from 'cookie-parser'
 import cors from 'cors'
 import express from 'express'
 import pool from './db.js'
-import { attachUser, createSession, destroySession, requireRole } from './auth.js'
+import { attachUser, createSession, destroySession, requireAuth, requireRole } from './auth.js'
 import { hashPassword, verifyPassword } from './passwords.js'
 
 const app = express()
@@ -378,6 +378,30 @@ app.delete('/api/plans/:id', requireRole('admin'), async (req, res) => {
 
 // ---------- Bookings ----------
 
+// A member's own booking history, shown in the site header.
+app.get('/api/bookings/mine', requireAuth, async (req, res) => {
+  const { rows } = await pool.query(`
+    SELECT b.id, b.reference, b.created_at,
+           COALESCE(SUM(ci.spots), 0)::int AS total_spots,
+           json_agg(json_build_object(
+             'classId', c.id, 'day', c.day, 'time', c.time, 'name', c.name, 'spots', ci.spots
+           ) ORDER BY c.id) AS items
+    FROM bookings b
+    JOIN booking_items ci ON ci.booking_id = b.id
+    JOIN classes c ON c.id = ci.class_id
+    WHERE b.user_id = $1
+    GROUP BY b.id
+    ORDER BY b.created_at DESC, b.id DESC`, [req.user.id])
+
+  res.json(rows.map((row) => ({
+    id: row.id,
+    reference: row.reference,
+    createdAt: row.created_at,
+    totalSpots: row.total_spots,
+    items: row.items,
+  })))
+})
+
 app.get('/api/bookings', requireRole(...EDIT_ROLES), async (req, res) => {
   const { rows } = await pool.query(`
     SELECT b.id, b.reference, b.name, b.email, b.user_id, b.created_at,
@@ -555,4 +579,12 @@ app.use((err, req, res, next) => {
   res.status(status).json({ error: status === 500 ? 'Something went wrong' : err.message })
 })
 
-app.listen(port, () => console.log(`API running on http://localhost:${port}`))
+const server = app.listen(port, () => console.log(`API running on http://localhost:${port}`))
+
+server.on('error', (err) => {
+  if (err.code === 'EADDRINUSE') {
+    console.error(`Port ${port} is already in use. Stop the other server or set PORT to a different value.`)
+    process.exit(1)
+  }
+  throw err
+})

@@ -19,12 +19,16 @@ const emptyForm = {
 
 export default function ClassesPanel() {
   const { data, loading, error, refetch } = useFetch('/api/classes')
+  const { data: trainerData, loading: trainersLoading } = useFetch('/api/trainers')
   const classes = data ?? []
   const [form, setForm] = useState(emptyForm)
   const [editingId, setEditingId] = useState(null)
   const [saving, setSaving] = useState(false)
   const [formError, setFormError] = useState(null)
   const [success, setSuccess] = useState(null)
+
+  const coachNames = Array.from(new Set([...(trainerData ?? []).map((t) => t.name), 'All coaches']))
+  const currentCoach = form.coach && !coachNames.includes(form.coach) ? form.coach : null
 
   const update = (key) => (e) => {
     const value = e.target.value
@@ -125,7 +129,19 @@ export default function ClassesPanel() {
             <input type="text" required value={form.name} onChange={update('name')} className={inputClass} placeholder="Strength Circuit" />
           </Field>
           <Field label="Coach">
-            <input type="text" required value={form.coach} onChange={update('coach')} className={inputClass} placeholder="Amara Okoye" />
+            <select
+              required
+              value={form.coach}
+              onChange={update('coach')}
+              className={inputClass}
+              disabled={trainersLoading && !trainerData}
+            >
+              <option value="">
+                {trainersLoading && !trainerData ? 'Loading coaches...' : 'Choose a coach'}
+              </option>
+              {currentCoach && <option value={currentCoach}>{currentCoach} (not in trainer list)</option>}
+              {coachNames.map((name) => <option key={name} value={name}>{name}</option>)}
+            </select>
           </Field>
           <Field label="Category">
             <select value={form.category} onChange={update('category')} className={inputClass}>

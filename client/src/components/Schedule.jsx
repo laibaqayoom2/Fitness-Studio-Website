@@ -2,6 +2,8 @@ import { useState, useRef, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import Panel from './Panel'
 import SpotsStepper from './SpotsStepper'
+import CarouselArrows from './CarouselArrows'
+import useCarousel from '../hooks/useCarousel'
 import useFetch from '../hooks/useFetch'
 import { apiPost } from '../api'
 import { useAuth } from '../auth/AuthContext'
@@ -22,6 +24,7 @@ export default function Schedule() {
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState(null)
   const dialogRef = useRef(null)
+  const classesTrackRef = useRef(null)
 
   // Derived values: calculated every render, never stored
   const confirmed = confirmedBooking !== null
@@ -32,6 +35,16 @@ export default function Schedule() {
   const plural = total === 1 ? 'spot' : 'spots'
   const picksOn = (d) =>
     classes.filter((c) => c.day === d).reduce((sum, c) => sum + (booked[c.id] ?? 0), 0)
+
+  // Days with three or more classes become a slider; one or two stay in the grid.
+  const slider = visible.length > 2
+  const {
+    atStart: classesAtStart,
+    atEnd: classesAtEnd,
+    prev: showPreviousClasses,
+    next: showNextClasses,
+    onScroll: measureClasses,
+  } = useCarousel(classesTrackRef, { itemCount: visible.length, resetKey: day })
 
   // Keep the native <dialog> in sync with the `view` state
   useEffect(() => {
@@ -90,6 +103,7 @@ export default function Schedule() {
       setBooked({})
       setView('confirmed')
       refetch()
+      window.dispatchEvent(new Event('ffl:booking-created'))
     } catch (e) {
       setSubmitError(e.message)
     } finally {
@@ -98,6 +112,41 @@ export default function Schedule() {
   }
 
   const ghost = 'rounded-full border border-line px-5 py-2 text-[0.85rem] transition hover:border-brand'
+
+  const renderClass = (c) => {
+    const mine = booked[c.id] ?? 0
+    const left = Math.max(c.spots - mine, 0) // spots still open after your picks
+    const capacity = c.capacity || c.spots
+    const fill = capacity > 0 ? (left / capacity) * 100 : 0
+    return (
+      <li key={c.id}
+        className={`flex min-w-0 flex-col gap-4 rounded-3xl border bg-card p-5 transition hover:-translate-y-1 hover:shadow-2xl ${mine > 0 ? 'border-brand' : 'border-transparent'}${slider ? ' w-[85vw] flex-none snap-start sm:w-[calc((100%-1rem)/2)]' : ''}`}>
+        <div className="flex items-center justify-between gap-2">
+          <p className="rounded-full bg-brand/15 px-3 py-1 text-[0.75rem] font-bold text-brand">{c.time}</p>
+          <span className="text-[0.75rem] text-muted">{c.category}</span>
+        </div>
+
+        <div>
+          <h3 className="text-[1.2rem] font-bold">{c.name}</h3>
+          <p className="mt-1 text-[0.85rem] text-muted">{c.coach}</p>
+        </div>
+
+        <div className="mt-auto">
+          <div className="h-1.5 overflow-hidden rounded-full bg-white/10" aria-hidden="true">
+            <div className="h-full rounded-full bg-brand transition-all duration-300"
+              style={{ width: `${fill}%` }} />
+          </div>
+          <div className="mt-3 flex items-center justify-between gap-3">
+            <span className="text-[0.8rem] text-muted">
+              {left === 0 ? 'Fully booked' : `${left} of ${capacity} spots left`}
+            </span>
+            <SpotsStepper label={`Spots for ${c.name} on ${c.day}`} max={c.spots}
+              value={mine} disabled={confirmed} onChange={(n) => setSpots(c.id, n)} />
+          </div>
+        </div>
+      </li>
+    )
+  }
 
   if (loading && !data) {
     return <Panel id="schedule" tone="bg-panel-alt" kicker="Class Schedule" title="This week"><p className="mt-8 text-muted">Loading classes...</p></Panel>
@@ -134,46 +183,27 @@ export default function Schedule() {
       </p>
       {error && <p role="alert" className="mt-2 text-[0.85rem] text-red-300">Could not refresh availability ({error}).</p>}
 
-      {/* Class cards for the chosen day */}
+      {/* Class cards for the chosen day: grid for one or two, slider for more */}
       {visible.length === 0 && (
         <p className="mt-4 text-muted">No classes are scheduled on {day}.</p>
       )}
-      <ul className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
-        {visible.map((c) => {
-          const mine = booked[c.id] ?? 0
-          const left = Math.max(c.spots - mine, 0) // spots still open after your picks
-          const capacity = c.capacity || c.spots
-          const fill = capacity > 0 ? (left / capacity) * 100 : 0
-          return (
-            <li key={c.id}
-              className={`flex min-w-0 flex-col gap-4 rounded-3xl border bg-card p-5 transition hover:-translate-y-1 hover:shadow-2xl ${mine > 0 ? 'border-brand' : 'border-transparent'}`}>
-              <div className="flex items-center justify-between gap-2">
-                <p className="rounded-full bg-brand/15 px-3 py-1 text-[0.75rem] font-bold text-brand">{c.time}</p>
-                <span className="text-[0.75rem] text-muted">{c.category}</span>
-              </div>
-
-              <div>
-                <h3 className="text-[1.2rem] font-bold">{c.name}</h3>
-                <p className="mt-1 text-[0.85rem] text-muted">{c.coach}</p>
-              </div>
-
-              <div className="mt-auto">
-                <div className="h-1.5 overflow-hidden rounded-full bg-white/10" aria-hidden="true">
-                  <div className="h-full rounded-full bg-brand transition-all duration-300"
-                    style={{ width: `${fill}%` }} />
-                </div>
-                <div className="mt-3 flex items-center justify-between gap-3">
-                  <span className="text-[0.8rem] text-muted">
-                    {left === 0 ? 'Fully booked' : `${left} of ${capacity} spots left`}
-                  </span>
-                  <SpotsStepper label={`Spots for ${c.name} on ${c.day}`} max={c.spots}
-                    value={mine} disabled={confirmed} onChange={(n) => setSpots(c.id, n)} />
-                </div>
-              </div>
-            </li>
-          )
-        })}
-      </ul>
+      {visible.length > 0 && (slider ? (
+        <div role="group" aria-roledescription="carousel" aria-label={`Classes on ${day}`} className="mt-4">
+          <ul ref={classesTrackRef} onScroll={measureClasses}
+            className="flex snap-x snap-mandatory gap-4 overflow-x-auto pb-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            {visible.map(renderClass)}
+          </ul>
+          <div className="mt-1 flex flex-wrap items-center justify-between gap-3">
+            <p className="text-[0.8rem] text-muted">Swipe or use the arrows to see all {visible.length} classes.</p>
+            <CarouselArrows label="classes" onPrev={showPreviousClasses} onNext={showNextClasses}
+              atStart={classesAtStart} atEnd={classesAtEnd} />
+          </div>
+        </div>
+      ) : (
+        <ul className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+          {visible.map(renderClass)}
+        </ul>
+      ))}
 
       {/* Sticky bar: appears once something is selected or booked and the dialog is closed */}
       {(confirmed || selectedTotal > 0) && view === null && createPortal(

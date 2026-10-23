@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { NAV } from '../data'
 import { useAuth } from '../auth/AuthContext'
+import useFetch from '../hooks/useFetch'
+import { MemberBookingsInline, MemberBookingsMenu } from './MemberBookings'
 
 const navLink = 'block py-2 text-[#e8e8ea] transition-colors hover:text-brand md:py-0'
 
@@ -11,10 +13,19 @@ export default function Header() {
   const { pathname } = useLocation()
   const navigate = useNavigate()
   const { user, loading, logout } = useAuth()
+  const { data: bookings, loading: bookingsLoading, error: bookingsError, refetch: refetchBookings } =
+    useFetch(user ? '/api/bookings/mine' : null, user?.id)
   const close = () => setOpen(false)
 
   const canManage = user?.role === 'admin' || user?.role === 'manager'
   const sectionTo = (href) => (pathname === '/' ? href : `/${href}`)
+
+  // A booking made on the schedule should show up in the nav straight away.
+  useEffect(() => {
+    const onBookingCreated = () => refetchBookings()
+    window.addEventListener('ffl:booking-created', onBookingCreated)
+    return () => window.removeEventListener('ffl:booking-created', onBookingCreated)
+  }, [refetchBookings])
 
   useEffect(() => {
     if (!open) return
@@ -78,6 +89,7 @@ export default function Header() {
                   Signed in as <span className="text-white">{user.name}</span>
                   {canManage && <span className="ml-1 text-brand">({user.role})</span>}
                 </p>
+                <MemberBookingsInline bookings={bookings} loading={bookingsLoading} error={bookingsError} onNavigate={close} />
                 {canManage && (
                   <Link to="/admin" onClick={close} className="rounded-full border border-line px-4 py-2 text-center text-white transition hover:border-brand">
                     Dashboard
@@ -99,15 +111,16 @@ export default function Header() {
         </ul>
       </nav>
 
-      <div className="hidden items-center gap-4 md:flex">
+      <div className="hidden items-center gap-3 md:flex">
         {loading ? (
           <span className="text-[0.8rem] text-muted">...</span>
         ) : user ? (
           <>
-            <span className="max-w-44 truncate text-[0.8rem] text-muted">
+            <span className="max-w-36 truncate text-[0.8rem] text-muted">
               {user.name}
               {canManage && <span className="ml-1 text-brand">({user.role})</span>}
             </span>
+            <MemberBookingsMenu bookings={bookings} loading={bookingsLoading} error={bookingsError} />
             {canManage && (
               <Link to="/admin" className="rounded-full border border-line px-4 py-2 text-[0.8rem] text-white transition hover:border-brand">
                 Dashboard
