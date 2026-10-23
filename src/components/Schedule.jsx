@@ -94,10 +94,12 @@ export default function Schedule() {
               <div className="mt-auto">
                 <div className="h-1.5 overflow-hidden rounded-full bg-white/10" aria-hidden="true">
                   <div className="h-full rounded-full bg-brand transition-all duration-300"
-                    style={{ width: `${(left / c.spots) * 100}%` }} />
+                    style={{ width: `${(left / c.capacity) * 100}%` }} />
                 </div>
                 <div className="mt-3 flex items-center justify-between gap-3">
-                  <span className="text-[0.8rem] text-muted">{left} of {c.spots} spots left</span>
+                  <span className="text-[0.8rem] text-muted">
+                    {left === 0 ? 'Fully booked' : `${left} of ${c.capacity} spots left`}
+                  </span>
                   <SpotsStepper label={`Spots for ${c.name} on ${c.day}`} max={c.spots}
                     value={mine} onChange={(n) => setSpots(c.id, n)} />
                 </div>

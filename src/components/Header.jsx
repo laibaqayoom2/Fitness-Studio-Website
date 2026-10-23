@@ -1,12 +1,28 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { NAV } from '../data'
 
 export default function Header() {
   const [open, setOpen] = useState(false)
+  const headerRef = useRef(null)
   const close = () => setOpen(false)
 
+  // Close the mobile menu with Esc or a click outside the header
+  useEffect(() => {
+    if (!open) return
+    const onKeyDown = (e) => { if (e.key === 'Escape') setOpen(false) }
+    const onPointerDown = (e) => {
+      if (!headerRef.current?.contains(e.target)) setOpen(false)
+    }
+    document.addEventListener('keydown', onKeyDown)
+    document.addEventListener('pointerdown', onPointerDown)
+    return () => {
+      document.removeEventListener('keydown', onKeyDown)
+      document.removeEventListener('pointerdown', onPointerDown)
+    }
+  }, [open])
+
   return (
-    <header className="fixed left-1/2 top-3.5 z-20 flex w-[min(1180px,calc(100%-2rem))] -translate-x-1/2 flex-wrap items-center justify-between gap-2 rounded-3xl border border-line bg-[rgb(32_26_24/0.85)] px-4 py-3 backdrop-blur-md md:rounded-full md:py-2.5 md:pl-6 md:pr-3">
+    <header ref={headerRef} className="fixed left-1/2 top-3.5 z-20 flex w-[min(1180px,calc(100%-2rem))] -translate-x-1/2 flex-wrap items-center justify-between gap-2 rounded-3xl border border-line bg-[rgb(32_26_24/0.85)] px-4 py-3 backdrop-blur-md md:rounded-full md:py-2.5 md:pl-6 md:pr-3">
       <a href="#top" onClick={close} className="flex flex-none items-center">
         <img src="/images/logo.png" alt="FFL Studio" width="412" height="165" className="h-[2.4rem] w-auto" />
       </a>

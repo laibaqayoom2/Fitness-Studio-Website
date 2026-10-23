@@ -23,7 +23,7 @@ export default function Hero() {
           <ul aria-hidden="true" className="flex items-center">
             {AVATARS.map((file) => (
               <li key={file} className="-ml-2 size-8 overflow-hidden rounded-full border-2 border-[#2b140a] first:ml-0">
-                <img src={`/images/${file}`} alt="" className="size-full object-cover" />
+                <img src={`/images/${file}`} alt="" width="160" height="160" className="size-full object-cover" />
               </li>
             ))}
             <li className="-ml-2 grid size-8 place-items-center rounded-full border-2 border-muted">+</li>

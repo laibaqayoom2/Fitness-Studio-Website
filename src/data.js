@@ -7,7 +7,7 @@ export const NAV = [
 ]
 
 export const TAGS = ['Personal Training', 'Strength', 'Group Classes', 'Swimming', 'Cardio Equipment', 'Functional Workouts']
-export const AVATARS = ['person-1.jpg', 'person-2.jpg', 'person-3.jpg']
+export const AVATARS = ['person-1.webp', 'person-2.webp', 'person-3.webp']
 
 export const STATS = [
   { value: '12', label: 'Years of Excellence' },
@@ -37,20 +37,20 @@ export const WHY = [
 export const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 export const CATEGORIES = ['All', 'Strength', 'Cardio', 'Swim', 'Mobility']
 
-// Main grid. `spots` = places still open in that class.
+// Main grid. `spots` = places still open in that class, out of `capacity`.
 export const CLASSES = [
-  { id: 1, day: 'Mon', time: '06:30', name: 'Strength Lab', coach: 'Coach Amara', category: 'Strength', spots: 8 },
-  { id: 2, day: 'Mon', time: '18:30', name: 'Swim Skills', coach: 'Coach Lena', category: 'Swim', spots: 6 },
-  { id: 3, day: 'Tue', time: '07:00', name: 'Functional Flow', coach: 'Coach Idris', category: 'Cardio', spots: 10 },
-  { id: 4, day: 'Tue', time: '17:45', name: 'Group Strength', coach: 'Coach Amara', category: 'Strength', spots: 12 },
-  { id: 5, day: 'Wed', time: '12:15', name: 'Mobility Reset', coach: 'Coach Lena', category: 'Mobility', spots: 15 },
-  { id: 6, day: 'Wed', time: '19:00', name: 'Cardio Burn', coach: 'Coach Idris', category: 'Cardio', spots: 14 },
-  { id: 7, day: 'Thu', time: '07:00', name: 'Swim Training', coach: 'Coach Lena', category: 'Swim', spots: 6 },
-  { id: 8, day: 'Thu', time: '18:00', name: 'Functional Flow', coach: 'Coach Idris', category: 'Cardio', spots: 10 },
-  { id: 9, day: 'Fri', time: '06:30', name: 'Group Strength', coach: 'Coach Amara', category: 'Strength', spots: 12 },
-  { id: 10, day: 'Fri', time: '17:30', name: 'Open Floor', coach: 'All coaches', category: 'Strength', spots: 20 },
-  { id: 11, day: 'Sat', time: '09:00', name: 'Long Cardio', coach: 'Coach Idris', category: 'Cardio', spots: 16 },
-  { id: 12, day: 'Sat', time: '10:30', name: 'Family Swim', coach: 'Coach Lena', category: 'Swim', spots: 8 },
+  { id: 1, day: 'Mon', time: '06:30', name: 'Strength Lab', coach: 'Coach Amara', category: 'Strength', spots: 8, capacity: 16 },
+  { id: 2, day: 'Mon', time: '18:30', name: 'Swim Skills', coach: 'Coach Lena', category: 'Swim', spots: 6, capacity: 10 },
+  { id: 3, day: 'Tue', time: '07:00', name: 'Functional Flow', coach: 'Coach Idris', category: 'Cardio', spots: 10, capacity: 18 },
+  { id: 4, day: 'Tue', time: '17:45', name: 'Group Strength', coach: 'Coach Amara', category: 'Strength', spots: 12, capacity: 16 },
+  { id: 5, day: 'Wed', time: '12:15', name: 'Mobility Reset', coach: 'Coach Lena', category: 'Mobility', spots: 15, capacity: 24 },
+  { id: 6, day: 'Wed', time: '19:00', name: 'Cardio Burn', coach: 'Coach Idris', category: 'Cardio', spots: 14, capacity: 20 },
+  { id: 7, day: 'Thu', time: '07:00', name: 'Swim Training', coach: 'Coach Lena', category: 'Swim', spots: 6, capacity: 12 },
+  { id: 8, day: 'Thu', time: '18:00', name: 'Functional Flow', coach: 'Coach Idris', category: 'Cardio', spots: 10, capacity: 18 },
+  { id: 9, day: 'Fri', time: '06:30', name: 'Group Strength', coach: 'Coach Amara', category: 'Strength', spots: 12, capacity: 16 },
+  { id: 10, day: 'Fri', time: '17:30', name: 'Open Floor', coach: 'All coaches', category: 'Strength', spots: 20, capacity: 30 },
+  { id: 11, day: 'Sat', time: '09:00', name: 'Long Cardio', coach: 'Coach Idris', category: 'Cardio', spots: 16, capacity: 24 },
+  { id: 12, day: 'Sat', time: '10:30', name: 'Family Swim', coach: 'Coach Lena', category: 'Swim', spots: 8, capacity: 16 },
 ]
 
 export const TRAINERS = [
@@ -72,7 +72,7 @@ export const PLANS = [
       'Free access to relaxation areas, sauna, and pool'] },
 ]
 
-export const HOURS = ['Mon to Fri: 6:00 to 22:00', 'Saturday: 8:00 to 20:00', 'Sunday: 9:00 to 18:00']
+export const HOURS = ['Mon to Fri: 6:00 to 22:00', 'Saturday: 8:00 to 20:00', 'Sunday: Closed']
 export const SOCIAL = [
   { label: 'Instagram', href: 'https://instagram.com' },
   { label: 'Facebook', href: 'https://facebook.com' },

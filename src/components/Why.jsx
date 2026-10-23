@@ -7,7 +7,7 @@ export default function Why() {
     <Panel id="why" kicker="Preferences" title={<>Why choose us for your <span className="text-brand">fitness</span> journey?</>}>
       <div className="mt-10 grid grid-cols-1 items-center gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
         <figure className="overflow-hidden rounded-3xl">
-          <img src="/images/why-trainers.svg" alt="Athlete tying battle ropes in the gym" width="640" height="400" loading="lazy"
+          <img src="/images/why-trainers.webp" alt="Athlete tying battle ropes in the gym" width="960" height="720" loading="lazy"
             className="aspect-square w-full object-cover" />
         </figure>
         <div className="grid gap-4">
