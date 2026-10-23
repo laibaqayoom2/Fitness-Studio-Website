@@ -20,7 +20,7 @@ export default function Trainers() {
     next,
     onScroll,
     togglePaused,
-  } = useCarousel(trackRef, { itemCount: list.length, autoPlay: true, interval: 5000 })
+  } = useCarousel(trackRef, { itemCount: list.length, autoPlay: true, interval: 5000, })
 
   if (loading && !trainers) {
     return <Panel id="trainers" kicker="Our Trainers" title={title}><p className="mt-10 text-muted">Loading coaches...</p></Panel>
@@ -47,7 +47,7 @@ export default function Trainers() {
             className="flex snap-x snap-mandatory gap-6 overflow-x-auto pb-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
           >
             {list.map((t) => (
-              <li key={t.id} className="w-[82vw] flex-none snap-start sm:w-[calc((100%-1.5rem)/2)]">
+              <li key={t.id} className="w-[82vw] flex-none snap-start sm:w-[calc((100%-1.5rem)/3)]">
                 <article className="group h-full overflow-hidden rounded-3xl bg-card transition hover:-translate-y-1 hover:shadow-2xl">
                   <img src={`/images/${t.img}`} alt={`Coach ${t.name}`} width="520" height="640" loading="lazy"
                     className="aspect-[4/4.5] w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]" />
