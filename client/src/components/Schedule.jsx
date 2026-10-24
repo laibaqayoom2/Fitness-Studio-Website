@@ -120,7 +120,7 @@ export default function Schedule() {
     const fill = capacity > 0 ? (left / capacity) * 100 : 0
     return (
       <li key={c.id}
-        className={`flex min-w-0 flex-col gap-4 rounded-3xl border bg-card p-5 transition hover:-translate-y-1 hover:shadow-2xl ${mine > 0 ? 'border-brand' : 'border-transparent'}${slider ? ' w-[85vw] flex-none snap-start sm:w-[calc((100%-1rem)/2)]' : ''}`}>
+        className={`flex min-w-0 flex-col gap-4 rounded-3xl border bg-card p-5 transition hover:-translate-y-1 hover:shadow-2xl ${mine > 0 ? 'border-brand' : 'border-transparent'}${slider ? ' w-[85vw] flex-none snap-start sm:w-[calc((100%-1rem)/2)] lg:w-[calc((100%-2rem)/3)]' : ''}`}>
         <div className="flex items-center justify-between gap-2">
           <p className="rounded-full bg-brand/15 px-3 py-1 text-[0.75rem] font-bold text-brand">{c.time}</p>
           <span className="text-[0.75rem] text-muted">{c.category}</span>
