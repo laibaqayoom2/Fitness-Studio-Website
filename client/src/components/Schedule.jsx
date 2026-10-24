@@ -200,7 +200,7 @@ export default function Schedule() {
           </div>
         </div>
       ) : (
-        <ul className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <ul className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {visible.map(renderClass)}
         </ul>
       ))}
