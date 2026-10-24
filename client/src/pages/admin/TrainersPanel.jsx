@@ -21,6 +21,8 @@ export default function TrainersPanel() {
   const [saving, setSaving] = useState(false)
   const [formError, setFormError] = useState(null)
   const [success, setSuccess] = useState(null)
+  const [pendingDelete, setPendingDelete] = useState(null)
+  const [deleting, setDeleting] = useState(false)
 
   const update = (key) => (e) => setForm((prev) => ({ ...prev, [key]: e.target.value }))
 
@@ -78,18 +80,32 @@ export default function TrainersPanel() {
     }
   }
 
-  const remove = async (trainer) => {
-    if (!window.confirm(`Delete trainer ${trainer.name}? Their login, if any, is kept in Users.`)) return
+  // Clicking "Delete" in the table only sets state, so it paints immediately.
+  const requestRemove = (trainer) => {
     setFormError(null)
     setSuccess(null)
+    setPendingDelete(trainer)
+  }
+
+  const cancelRemove = () => {
+    if (deleting) return
+    setPendingDelete(null)
+  }
+
+  const confirmRemove = async () => {
+    if (!pendingDelete || deleting) return
+    setDeleting(true)
 
     try {
-      await apiDelete(`/api/trainers/${trainer.id}`)
-      if (editingId === trainer.id) reset()
+      await apiDelete(`/api/trainers/${pendingDelete.id}`)
+      if (editingId === pendingDelete.id) reset()
       setSuccess('Trainer deleted.')
       refetch()
     } catch (err) {
       setFormError(err.message)
+    } finally {
+      setDeleting(false)
+      setPendingDelete(null)
     }
   }
 
@@ -170,12 +186,44 @@ export default function TrainersPanel() {
               <Td>
                 <div className="flex flex-wrap gap-2">
                   <button type="button" onClick={() => edit(trainer)} className={secondaryButton}>Edit</button>
-                  <button type="button" onClick={() => remove(trainer)} className={dangerButton}>Delete</button>
+                  <button type="button" onClick={() => requestRemove(trainer)} className={dangerButton}>Delete</button>
                 </div>
               </Td>
             </tr>
           ))}
         </Table>
+      )}
+
+      {pendingDelete && (
+        <div
+          role="alertdialog"
+          aria-modal="true"
+          aria-labelledby="delete-trainer-title"
+          aria-describedby="delete-trainer-desc"
+          onKeyDown={(e) => e.key === 'Escape' && cancelRemove()}
+          className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4"
+        >
+          <div className={`${cardClass} w-full max-w-md`}>
+            <h3 id="delete-trainer-title" className="font-bold">Delete {pendingDelete.name}?</h3>
+            <p id="delete-trainer-desc" className="mt-2 text-[0.85rem] text-muted">
+              Their login, if any, is kept in Users.
+            </p>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={confirmRemove}
+                disabled={deleting}
+                autoFocus
+                className={dangerButton}
+              >
+                {deleting ? 'Deleting...' : 'Delete trainer'}
+              </button>
+              <button type="button" onClick={cancelRemove} disabled={deleting} className={secondaryButton}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )
