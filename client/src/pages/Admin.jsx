@@ -67,8 +67,8 @@ export default function Admin() {
   }
 
   return (
-    <section className="min-h-screen bg-ink px-pad pb-20 pt-28">
-      <div className="mx-auto max-w-7xl">
+    <section className="min-h-screen bg-ink">
+      <div className="mx-auto max-w-[1600px] px-pad pb-20 pt-28">
         <header className="mb-6 flex flex-wrap items-end justify-between gap-4">
           <div>
             <p className="text-[0.8rem] font-semibold uppercase tracking-[0.08em] text-brand">Studio management</p>
@@ -82,8 +82,8 @@ export default function Admin() {
           </Link>
         </header>
 
-        <div className="grid gap-6 lg:grid-cols-[260px,1fr] xl:grid-cols-[280px,1fr]">
-          <aside className="sticky top-24 h-fit rounded-2xl border border-line bg-panel p-3 shadow-lg shadow-black/5">
+        <div className="grid items-start gap-6 lg:grid-cols-[280px,1fr]">
+          <aside className="sticky top-24 rounded-2xl border border-line bg-panel p-3 shadow-lg shadow-black/5">
             <div className="mb-3 px-2 py-2">
               <p className="text-sm font-semibold text-white light:text-gray-900">Admin Menu</p>
               <p className="text-xs text-muted">Studio Management</p>
