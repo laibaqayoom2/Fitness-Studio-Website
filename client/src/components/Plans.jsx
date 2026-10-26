@@ -3,11 +3,13 @@ import Panel from './Panel'
 import useFetch from '../hooks/useFetch'
 
 const CARD = {
-  normal: 'border-line bg-[linear-gradient(180deg,#25272d,#1d1f24)]',
-  featured: 'border-brand/60 bg-[radial-gradient(120%_60%_at_50%_0%,rgb(255_90_31/0.22),transparent_65%),linear-gradient(180deg,#2a2523,#1d1f24)]',
+  normal: 'border-line bg-card',
+  featured:
+    'border-brand/60 bg-[radial-gradient(120%_60%_at_50%_0%,rgb(255_90_31/0.12),transparent_65%),linear-gradient(180deg,var(--color-panel),var(--color-card))]',
 }
+
 const BUTTON = {
-  dark: 'border border-line bg-linear-to-b from-[#373a42] to-[#26282e] text-white',
+  dark: 'border border-line bg-cta text-soft hover:opacity-80',
   primary: 'bg-linear-to-b from-[#ff8a4d] to-brand text-ink',
   light: 'bg-white text-[#14100d] hover:bg-[#e9eaec]',
 }

@@ -9,7 +9,7 @@ import { apiPost } from '../api'
 import { useAuth } from '../auth/AuthContext'
 import { DAYS } from '../data'
 
-const inputClass = 'w-full rounded-xl border border-line bg-ink/50 px-4 py-2.5 text-[0.9rem] text-white placeholder:text-muted focus:border-brand focus:outline-none'
+const inputClass = 'w-full rounded-xl border border-line bg-ink/50 px-4 py-2.5 text-[0.9rem] text-white placeholder:text-muted focus:border-brand focus:outline-none light:bg-white light:text-gray-900'
 
 export default function Schedule() {
   const { data, loading, error, refetch } = useFetch('/api/classes')
@@ -17,6 +17,8 @@ export default function Schedule() {
   const classes = data ?? []
   // Open on today's tab (Mon-first index); Sunday has no tab, so fall back to Mon
   const [day, setDay] = useState(() => DAYS[(new Date().getDay() + 6) % 7] ?? 'Mon')
+  const [category, setCategory] = useState('All')
+  const [hideFull, setHideFull] = useState(false)
   const [booked, setBooked] = useState({})                  // { [classId]: spots }
   const [confirmedBooking, setConfirmedBooking] = useState(null) // server response
   const [view, setView] = useState(null)                    // null | 'review' | 'confirmed'
@@ -28,7 +30,13 @@ export default function Schedule() {
 
   // Derived values: calculated every render, never stored
   const confirmed = confirmedBooking !== null
-  const visible = classes.filter((c) => c.day === day)
+  const categories = ['All', ...Array.from(new Set(classes.map((c) => c.category).filter(Boolean))).sort()]
+  const visible = classes
+    .filter((c) => c.day === day)
+    .filter((c) => category === 'All' || c.category === category)
+    .filter((c) => !hideFull || c.spots > 0)
+    .sort((a, b) => a.time.localeCompare(b.time))
+  const filtersActive = category !== 'All' || hideFull
   const bookedClasses = classes.filter((c) => (booked[c.id] ?? 0) > 0)
   const selectedTotal = Object.values(booked).reduce((sum, n) => sum + n, 0)
   const total = confirmedBooking?.totalSpots ?? selectedTotal
@@ -120,25 +128,25 @@ export default function Schedule() {
     const fill = capacity > 0 ? (left / capacity) * 100 : 0
     return (
       <li key={c.id}
-        className={`flex min-w-0 flex-col gap-4 rounded-3xl border bg-card p-5 transition hover:-translate-y-1 hover:shadow-2xl ${mine > 0 ? 'border-brand' : 'border-transparent'}${slider ? ' w-[85vw] flex-none snap-start sm:w-[calc((100%-1rem)/2)] lg:w-[calc((100%-2rem)/3)]' : ''}`}>
+        className={`flex min-w-0 flex-col gap-4 rounded-3xl border bg-card p-5 transition hover:-translate-y-1 hover:shadow-2xl ${mine > 0 ? 'border-brand' : 'border-line'}${slider ? ' w-[85vw] flex-none snap-start sm:w-[calc((100%-1rem)/2)] lg:w-[calc((100%-2rem)/3)]' : ''}`}>
         <div className="flex items-center justify-between gap-2">
           <p className="rounded-full bg-brand/15 px-3 py-1 text-[0.75rem] font-bold text-brand">{c.time}</p>
           <span className="text-[0.75rem] text-muted">{c.category}</span>
         </div>
 
         <div>
-          <h3 className="text-[1.2rem] font-bold">{c.name}</h3>
+          <h3 className="text-[1.2rem] font-bold text-white light:text-gray-900">{c.name}</h3>
           <p className="mt-1 text-[0.85rem] text-muted">{c.coach}</p>
         </div>
 
         <div className="mt-auto">
-          <div className="h-1.5 overflow-hidden rounded-full bg-white/10" aria-hidden="true">
+          <div className="h-1.5 overflow-hidden rounded-full bg-white/10 light:bg-black/10" aria-hidden="true">
             <div className="h-full rounded-full bg-brand transition-all duration-300"
               style={{ width: `${fill}%` }} />
           </div>
           <div className="mt-3 flex items-center justify-between gap-3">
             <span className="text-[0.8rem] text-muted">
-              {left === 0 ? 'Fully booked' : `${left} of ${capacity} spots left`}
+              {left === 0 ? <span className="rounded-full bg-white/10 px-2 py-0.5 text-[0.7rem] uppercase tracking-[0.08em] text-white light:bg-black/10 light:text-gray-900">Full</span> : `${left} of ${capacity} spots left`}
             </span>
             <SpotsStepper label={`Spots for ${c.name} on ${c.day}`} max={c.spots}
               value={mine} disabled={confirmed} onChange={(n) => setSpots(c.id, n)} />
@@ -178,14 +186,47 @@ export default function Schedule() {
       </div>
 
       <p aria-live="polite" className="mt-4 text-[0.85rem] text-muted">
-        {visible.length} classes on {day} &middot; {selectedTotal} {selectedTotal === 1 ? 'spot' : 'spots'} selected
+        {visible.length} {visible.length === 1 ? 'class' : 'classes'} on {day} &middot; {selectedTotal} {selectedTotal === 1 ? 'spot' : 'spots'} selected
         {user && <span className="ml-1 text-soft">· Signed in as {user.name}</span>}
       </p>
       {error && <p role="alert" className="mt-2 text-[0.85rem] text-red-300">Could not refresh availability ({error}).</p>}
 
+      <div className="mt-4 flex flex-wrap items-center gap-2">
+        {categories.map((item) => (
+          <button
+            key={item}
+            type="button"
+            onClick={() => setCategory(item)}
+            className={`rounded-full px-3 py-1.5 text-[0.75rem] transition ${
+              category === item ? 'bg-brand font-semibold text-ink' : 'border border-line text-soft hover:text-white'
+            }`}
+          >
+            {item}
+          </button>
+        ))}
+        <button
+          type="button"
+          onClick={() => setHideFull((prev) => !prev)}
+          className={`rounded-full px-3 py-1.5 text-[0.75rem] transition ${
+            hideFull ? 'bg-brand font-semibold text-ink' : 'border border-line text-soft hover:text-white'
+          }`}
+        >
+          Hide full classes
+        </button>
+        {filtersActive && (
+          <button
+            type="button"
+            onClick={() => { setCategory('All'); setHideFull(false) }}
+            className="rounded-full px-3 py-1.5 text-[0.75rem] text-muted transition hover:text-white"
+          >
+            Clear filters
+          </button>
+        )}
+      </div>
+
       {/* Class cards for the chosen day: grid for one or two, slider for more */}
       {visible.length === 0 && (
-        <p className="mt-4 text-muted">No classes are scheduled on {day}.</p>
+        <p className="mt-4 text-muted">No classes match these filters on {day}.</p>
       )}
       {visible.length > 0 && (slider ? (
         <div role="group" aria-roledescription="carousel" aria-label={`Classes on ${day}`} className="mt-4">

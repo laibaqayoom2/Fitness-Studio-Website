@@ -1,13 +1,11 @@
 import crypto from 'node:crypto'
 import pool from './db.js'
+import { env } from './config.js'
 
 export const SESSION_COOKIE = 'ffl_session'
-const configuredTtlDays = Number(process.env.SESSION_TTL_DAYS)
-const SESSION_TTL_DAYS = Number.isFinite(configuredTtlDays) && configuredTtlDays > 0 ? configuredTtlDays : 7
-const SESSION_TTL_MS = SESSION_TTL_DAYS * 24 * 60 * 60 * 1000
-const configuredSameSite = (process.env.COOKIE_SAMESITE || 'lax').toLowerCase()
-const sameSite = ['lax', 'strict', 'none'].includes(configuredSameSite) ? configuredSameSite : 'lax'
-const secure = sameSite === 'none' || process.env.NODE_ENV === 'production'
+const SESSION_TTL_MS = env.SESSION_TTL_DAYS * 24 * 60 * 60 * 1000
+const sameSite = env.COOKIE_SAMESITE
+const secure = sameSite === 'none' || env.NODE_ENV === 'production'
 
 function hashToken(token) {
   return crypto.createHash('sha256').update(token).digest('hex')

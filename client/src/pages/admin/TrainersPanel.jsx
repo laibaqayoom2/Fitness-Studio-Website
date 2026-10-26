@@ -1,13 +1,14 @@
 import { useState } from 'react'
 import { apiDelete, apiPost, apiPut } from '../../api'
 import useFetch from '../../hooks/useFetch'
+import { imageFileToDataUrl, trainerImageSrc } from '../../utils/image'
 import { Empty, Field, Notice, SectionHeader, Table, Td } from './ui'
 import { cardClass, dangerButton, inputClass, primaryButton, secondaryButton } from './styles'
 
 const emptyForm = {
   name: '',
   role: '',
-  img: 'trainer-amara.webp',
+  img: '',
   bio: '',
   email: '',
   password: '',
@@ -21,6 +22,8 @@ export default function TrainersPanel() {
   const [saving, setSaving] = useState(false)
   const [formError, setFormError] = useState(null)
   const [success, setSuccess] = useState(null)
+  const [photoError, setPhotoError] = useState(null)
+  const [processingPhoto, setProcessingPhoto] = useState(false)
   const [pendingDelete, setPendingDelete] = useState(null)
   const [deleting, setDeleting] = useState(false)
 
@@ -30,6 +33,26 @@ export default function TrainersPanel() {
     setEditingId(null)
     setForm(emptyForm)
     setFormError(null)
+    setPhotoError(null)
+  }
+
+  const uploadPhoto = async (e) => {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+
+    setPhotoError(null)
+    setFormError(null)
+    setSuccess(null)
+    setProcessingPhoto(true)
+    try {
+      const dataUrl = await imageFileToDataUrl(file)
+      setForm((prev) => ({ ...prev, img: dataUrl }))
+    } catch (err) {
+      setPhotoError(err.message)
+    } finally {
+      setProcessingPhoto(false)
+    }
   }
 
   const edit = (trainer) => {
@@ -43,14 +66,21 @@ export default function TrainersPanel() {
       password: '',
     })
     setFormError(null)
+    setPhotoError(null)
     setSuccess(null)
   }
 
   const submit = async (e) => {
     e.preventDefault()
-    if (saving) return
+    if (saving || processingPhoto) return
     setFormError(null)
     setSuccess(null)
+
+    if (!form.img.trim()) {
+      setFormError('Upload a trainer photo before saving.')
+      return
+    }
+
     setSaving(true)
 
     try {
@@ -131,8 +161,25 @@ export default function TrainersPanel() {
           <Field label="Specialty / role">
             <input type="text" required value={form.role} onChange={update('role')} className={inputClass} placeholder="Strength & Conditioning" />
           </Field>
-          <Field label="Image filename" hint="A file in client/public/images, e.g. trainer-amara.webp">
-            <input type="text" required value={form.img} onChange={update('img')} className={inputClass} placeholder="trainer-amara.webp" />
+          <Field label="Photo" hint="PNG, JPG or WebP up to 8 MB. We resize it automatically for the web.">
+            <div className="flex flex-wrap items-center gap-3">
+              {form.img ? (
+                <img src={trainerImageSrc(form.img)} alt="Trainer photo preview" className="size-16 flex-none rounded-xl border border-line object-cover" />
+              ) : (
+                <span className="grid size-16 flex-none place-items-center rounded-xl border border-dashed border-line text-center text-[0.6rem] leading-tight text-muted">
+                  No photo
+                </span>
+              )}
+              <input
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                onChange={uploadPhoto}
+                disabled={processingPhoto}
+                className="block w-full max-w-64 text-[0.75rem] text-muted file:mr-3 file:rounded-full file:border-0 file:bg-brand file:px-3 file:py-1.5 file:text-[0.75rem] file:font-semibold file:text-ink hover:file:opacity-90 disabled:opacity-50"
+              />
+            </div>
+            {processingPhoto && <span className="text-[0.72rem] font-normal text-muted">Processing photo...</span>}
+            {photoError && <span role="alert" className="text-[0.72rem] font-normal text-red-300">{photoError}</span>}
           </Field>
           <Field label="Bio">
             <textarea required rows="3" value={form.bio} onChange={update('bio')} className={inputClass} placeholder="A short introduction for the team section." />
@@ -156,8 +203,8 @@ export default function TrainersPanel() {
           )}
 
           <div className="sm:col-span-2">
-            <button type="submit" disabled={saving} className={primaryButton}>
-              {saving ? 'Saving...' : editingId ? 'Save changes' : 'Add trainer'}
+            <button type="submit" disabled={saving || processingPhoto} className={primaryButton}>
+              {processingPhoto ? 'Processing photo...' : saving ? 'Saving...' : editingId ? 'Save changes' : 'Add trainer'}
             </button>
           </div>
         </form>
@@ -174,8 +221,17 @@ export default function TrainersPanel() {
           {trainers.map((trainer) => (
             <tr key={trainer.id}>
               <Td>
-                <p className="font-semibold text-white">{trainer.name}</p>
-                <p className="mt-0.5 max-w-[38ch] text-[0.75rem] text-muted">{trainer.bio}</p>
+                <div className="flex items-start gap-3">
+                  <img
+                    src={trainerImageSrc(trainer.img)}
+                    alt=""
+                    className="size-10 flex-none rounded-full border border-line object-cover"
+                  />
+                  <div>
+                    <p className="font-semibold text-white">{trainer.name}</p>
+                    <p className="mt-0.5 max-w-[38ch] text-[0.75rem] text-muted">{trainer.bio}</p>
+                  </div>
+                </div>
               </Td>
               <Td>{trainer.role}</Td>
               <Td>

@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
 import AuthShell from './AuthShell'
 
-const inputClass = 'w-full rounded-xl border border-line bg-ink/60 px-4 py-2.5 text-[0.9rem] text-white placeholder:text-muted focus:border-brand focus:outline-none'
+const inputClass = 'w-full rounded-xl border border-line bg-ink/60 px-4 py-2.5 text-[0.9rem] text-white placeholder:text-muted focus:border-brand focus:outline-none light:bg-white light:text-gray-900'
 
 export default function Signup() {
   const { signup } = useAuth()

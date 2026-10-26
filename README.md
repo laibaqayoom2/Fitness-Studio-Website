@@ -19,6 +19,9 @@ A marketing site for FFL Studio with a class schedule, booking flow, accounts, a
 - Admin dashboard at `/admin` with role-aware tabs.
 - Admin-created trainer accounts are automatically linked to the trainer profile and given the `manager` role.
 - Members see their own bookings in a header menu, refreshed immediately after booking.
+- Contact section with a validated enquiry form, honeypot and rate limiting. Messages are stored in PostgreSQL and managed from an admin inbox.
+- Accessible navbar dropdowns for grouped links, plus collapsible submenus on mobile.
+- Admins upload trainer photos from the dashboard; images are resized and compressed in the browser before saving.
 - Days with three or more classes switch from a grid to a swipeable slider; coaches autoplay in a carousel that pauses on hover, focus, or from the pause button.
 
 ## Structure
@@ -55,13 +58,15 @@ client/
       Trainers.jsx        Autoplay coach carousel (API)
       Plans.jsx           Membership tiers (API)
       Cta.jsx             Free-trial call to action
+      Contact.jsx         Contact details and validated enquiry form
       Footer.jsx          Hours, contact and social links
     pages/
       Home.jsx            Public landing page
       Login.jsx           Login form
       Signup.jsx          Member signup form
       Admin.jsx           Protected manager/admin dashboard
-      admin/              Classes, bookings, trainers, plans and users panels
+      admin/              Classes, bookings, messages, trainers, plans and users panels
+    utils/image.js        Photo resize/compression and trainer image URL helper
 server/
   index.js                Express app and API routes
   auth.js                 Sessions, cookie helpers, role middleware
@@ -167,6 +172,7 @@ Public routes:
 | GET | `/api/trainers` | All coaches |
 | GET | `/api/plans` | All membership plans |
 | POST | `/api/bookings` | Reserve spots; decrements availability transactionally |
+| POST | `/api/contact` | Store a contact enquiry (rate-limited, honeypot protected) |
 
 Auth routes:
 
@@ -190,9 +196,13 @@ Manager/admin routes (session required):
 | PUT | `/api/trainers/:id` | admin | Update a trainer profile |
 | DELETE | `/api/trainers/:id` | admin | Delete a trainer profile |
 | POST/PUT/DELETE | `/api/plans/:id?` | admin | Manage membership plans |
+| GET | `/api/contact` | admin | List contact messages (newest first) |
+| PATCH | `/api/contact/:id` | admin | Mark a message `new` or `read` |
+| DELETE | `/api/contact/:id` | admin | Delete a contact message |
 | GET | `/api/users` | admin | List users |
 | PATCH | `/api/users/:id` | admin | Change a user's role |
 | DELETE | `/api/users/:id` | admin | Delete a user |
+| GET | `/api/dashboard` | manager/admin | Dashboard overview, trends, and KPIs |
 
 `POST /api/bookings` body:
 
@@ -219,6 +229,8 @@ Admin-created trainer body:
 }
 ```
 
+`img` can be either a seed filename in `client/public/images` or a compressed `data:image/...` URL produced by the dashboard uploader. Uploaded photos are resized in the browser (max 720×900, JPEG) and must decode to 2 MB or less on the server.
+
 Omit `email` and `password` to create a profile-only trainer. If both are supplied, the trainer gets a linked `manager` account.
 
 ## Editing content
@@ -226,7 +238,7 @@ Omit `email` and `password` to create a profile-only trainer. If both are suppli
 - Classes, trainers, plans and demo accounts live in `server/seed-data.js`. Edit them there and run `npm run seed`; the client loads them from the API.
 - `spots` is the number of places still open; `capacity` is the class size. The schedule progress bar labels are derived from both.
 - Navigation, stats, services, benefits, opening hours and social links are static in `client/src/data.js`.
-- In the running app, managers/admins can edit classes and bookings, and admins can edit trainers, plans and users from `/admin`.
+- In the running app, managers/admins can edit classes and bookings, and admins can edit trainers (including photo uploads), plans and users, and read contact enquiries from `/admin`.
 
 ## Deploying
 

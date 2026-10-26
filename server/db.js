@@ -1,12 +1,13 @@
-import 'dotenv/config'
-import pg from 'pg'
+import { env } from './config.js'
+import { Pool } from 'pg'
 
-const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL })
+const pool = new Pool({
+  connectionString: env.DATABASE_URL,
+  ssl: env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+})
 
-// Idle clients can lose their connection (database restart, network blip).
-// Without a listener, pg's pool emits an unhandled error and the process exits.
 pool.on('error', (err) => {
-  console.error('Unexpected database pool error:', err.message)
+  console.error('Unexpected error on idle client', err)
 })
 
 export default pool

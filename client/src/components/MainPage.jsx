@@ -6,6 +6,7 @@ import Schedule from './Schedule'
 import Trainers from './Trainers'
 import Plans from './Plans'
 import Cta from './Cta'
+import Contact from './Contact'
 
 export default function MainPage () {
   return (
@@ -17,6 +18,7 @@ export default function MainPage () {
       <Trainers />
       <Plans />
       <Cta />
+      <Contact />
     </>
   )
 }

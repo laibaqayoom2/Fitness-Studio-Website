@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { apiDelete, apiPost, apiPut } from '../../api'
 import { DAYS } from '../../data'
 import useFetch from '../../hooks/useFetch'
@@ -20,15 +20,29 @@ const emptyForm = {
 export default function ClassesPanel() {
   const { data, loading, error, refetch } = useFetch('/api/classes')
   const { data: trainerData, loading: trainersLoading } = useFetch('/api/trainers')
-  const classes = data ?? []
+  const classes = useMemo(() => data ?? [], [data])
   const [form, setForm] = useState(emptyForm)
   const [editingId, setEditingId] = useState(null)
   const [saving, setSaving] = useState(false)
   const [formError, setFormError] = useState(null)
   const [success, setSuccess] = useState(null)
+  const [search, setSearch] = useState('')
+  const [filterDay, setFilterDay] = useState('All')
+  const [filterCategory, setFilterCategory] = useState('All')
 
   const coachNames = Array.from(new Set([...(trainerData ?? []).map((t) => t.name), 'All coaches']))
   const currentCoach = form.coach && !coachNames.includes(form.coach) ? form.coach : null
+
+  const categories = ['All', ...Array.from(new Set(classes.map((c) => c.category).filter(Boolean))).sort()]
+  const filtered = useMemo(() => {
+    const q = search.toLowerCase()
+    return classes.filter((c) => {
+      if (filterDay !== 'All' && c.day !== filterDay) return false
+      if (filterCategory !== 'All' && c.category !== filterCategory) return false
+      if (!q) return true
+      return [c.name, c.coach, c.category, c.day, c.time].some((v) => String(v).toLowerCase().includes(q))
+    })
+  }, [classes, search, filterDay, filterCategory])
 
   const update = (key) => (e) => {
     const value = e.target.value
@@ -87,7 +101,7 @@ export default function ClassesPanel() {
   }
 
   const remove = async (c) => {
-    if (!window.confirm(`Delete ${c.name} on ${c.day} at ${c.time}?`)) return
+    if (!window.confirm(`Delete ${c.name} on ${c.day} at ${c.time}? This action cannot be undone.`)) return
     setFormError(null)
     setSuccess(null)
 
@@ -106,6 +120,24 @@ export default function ClassesPanel() {
       <SectionHeader
         title="Classes"
         description="Add sessions, update times and availability, or remove a class. Managers and admins can edit the schedule."
+        action={
+          <div className="flex flex-wrap items-center gap-2">
+            <input
+              type="search"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search classes..."
+              className={inputClass}
+            />
+            <select value={filterDay} onChange={(e) => setFilterDay(e.target.value)} className={inputClass}>
+              <option value="All">All days</option>
+              {DAYS.map((day) => <option key={day} value={day}>{day}</option>)}
+            </select>
+            <select value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)} className={inputClass}>
+              {categories.map((cat) => <option key={cat} value={cat}>{cat === 'All' ? 'All categories' : cat}</option>)}
+            </select>
+          </div>
+        }
       />
 
       <div className={cardClass}>
@@ -169,10 +201,11 @@ export default function ClassesPanel() {
       {error && <p role="alert" className="mt-5 text-[0.85rem] text-red-300">Could not load classes: {error}</p>}
       {loading && !data && <p className="mt-5 text-[0.85rem] text-muted">Loading classes...</p>}
       {!loading && !error && classes.length === 0 && <Empty>No classes yet. Add the first one above.</Empty>}
+      {!loading && !error && classes.length > 0 && filtered.length === 0 && <Empty>No classes match your filters.</Empty>}
 
-      {classes.length > 0 && (
+      {filtered.length > 0 && (
         <Table columns={['When', 'Class', 'Coach', 'Category', 'Spots', 'Actions']}>
-          {classes.map((c) => (
+          {filtered.map((c) => (
             <tr key={c.id}>
               <Td className="whitespace-nowrap font-semibold text-white">{c.day} {c.time}</Td>
               <Td className="font-semibold text-white">{c.name}</Td>

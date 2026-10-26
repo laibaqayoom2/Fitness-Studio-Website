@@ -1,4 +1,3 @@
-import 'dotenv/config'
 import crypto from 'node:crypto'
 import fs from 'node:fs'
 import path from 'node:path'
@@ -6,27 +5,53 @@ import { fileURLToPath } from 'node:url'
 import cookieParser from 'cookie-parser'
 import cors from 'cors'
 import express from 'express'
+import helmet from 'helmet'
+import rateLimit from 'express-rate-limit'
 import pool from './db.js'
 import { attachUser, createSession, destroySession, requireAuth, requireRole } from './auth.js'
 import { hashPassword, verifyPassword } from './passwords.js'
+import { env } from './config.js'
 
 const app = express()
-const port = Number(process.env.PORT) || 3000
-const allowedOrigins = (process.env.CLIENT_ORIGIN ?? 'http://localhost:5173,http://localhost:4173')
-  .split(',')
-  .map((origin) => origin.trim())
-  .filter(Boolean)
+const port = env.PORT
+const allowedOrigins = Array.isArray(env.CLIENT_ORIGIN)
+  ? env.CLIENT_ORIGIN
+  : String(env.CLIENT_ORIGIN).split(',').map((s) => s.trim()).filter(Boolean)
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 const ROLES = ['member', 'manager', 'admin']
 const PLAN_BUTTONS = ['dark', 'primary', 'light']
 const EDIT_ROLES = ['manager', 'admin']
+const CONTACT_TOPICS = ['free-trial', 'membership', 'personal-training', 'group-classes', 'other']
+const CONTACT_STATUSES = ['new', 'read']
 
-app.use(cors({ origin: allowedOrigins, credentials: true }))
+// Trainer photos arrive as compressed data URLs; every other route stays small.
+const jsonSmall = express.json({ limit: '100kb' })
+const jsonPhoto = express.json({ limit: '4mb' })
+
+app.set('trust proxy', 1)
+app.use(helmet())
+app.use(cors({ origin: allowedOrigins.length ? allowedOrigins : true, credentials: true }))
 app.use(cookieParser())
-app.use(express.json())
-app.set("trust proxy", 1);
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+})
+app.use('/api/auth/login', authLimiter)
+app.use('/api/auth/signup', authLimiter)
+app.use((req, res, next) => {
+  const parser = req.method !== 'GET' && req.path.startsWith('/api/trainers') ? jsonPhoto : jsonSmall
+  parser(req, res, next)
+})
 app.use('/api', attachUser)
+
+app.use((err, req, res, next) => {
+  console.error(err)
+  const status = err.status || err.statusCode || 500
+  res.status(status).json({ error: err.message || 'Something went wrong.' })
+})
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const cleanString = (value) => (typeof value === 'string' ? value.trim() : '')
@@ -75,13 +100,66 @@ function parseTrainer(body) {
 
   if (!name || name.length > 120) return { error: 'Trainer name is required (120 characters max).' }
   if (!role || role.length > 120) return { error: 'Trainer role is required (120 characters max).' }
-  if (!img || img.length > 255) return { error: 'Image filename is required (255 characters max).' }
-  if (!/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(img) || img.includes('..')) {
-    return { error: 'Use a plain image filename, for example trainer-amara.webp.' }
+  if (!img || img.length > 3_000_000) return { error: 'Upload a photo for this trainer.' }
+
+  const dataUrl = /^data:image\/(png|jpe?g|webp);base64,([A-Za-z0-9+/=]+)$/.exec(img)
+  if (dataUrl) {
+    const bytes = Math.floor((dataUrl[2].length * 3) / 4)
+    if (bytes > 2 * 1024 * 1024) {
+      return { error: 'Trainer photo must be 2 MB or smaller after resizing.' }
+    }
+  } else if (img.length > 255 || !/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(img) || img.includes('..')) {
+    return { error: 'Upload a PNG, JPG or WebP photo.' }
   }
+
   if (!bio || bio.length > 2000) return { error: 'Trainer bio is required (2000 characters max).' }
 
   return { value: { name, role, img, bio } }
+}
+
+function parseContact(body) {
+  const name = cleanString(body?.name)
+  const email = cleanString(body?.email).toLowerCase()
+  const phone = cleanString(body?.phone)
+  const topic = cleanString(body?.topic)
+  const message = cleanString(body?.message)
+  const consent = body?.consent === true
+
+  if (!name || name.length > 120) return { error: 'Please enter your name (120 characters max).' }
+  if (!emailPattern.test(email) || email.length > 320) return { error: 'Please enter a valid email address.' }
+  if (phone && (phone.length > 40 || !/^[0-9+()\s.-]{5,40}$/.test(phone))) {
+    return { error: 'Please enter a valid phone number or leave it blank.' }
+  }
+  if (!CONTACT_TOPICS.includes(topic)) return { error: 'Choose what you are interested in.' }
+  if (message.length < 10 || message.length > 3000) {
+    return { error: 'Message must be between 10 and 3000 characters.' }
+  }
+  if (!consent) return { error: 'Please agree to be contacted about your enquiry.' }
+
+  return { value: { name, email, phone, topic, message } }
+}
+
+const contactSubmissions = new Map()
+function contactRateLimited(ip) {
+  const now = Date.now()
+  const windowMs = 10 * 60 * 1000
+  const maxRequests = 5
+  const recent = (contactSubmissions.get(ip) ?? []).filter((time) => now - time < windowMs)
+
+  if (recent.length >= maxRequests) {
+    contactSubmissions.set(ip, recent)
+    return true
+  }
+
+  recent.push(now)
+  contactSubmissions.set(ip, recent)
+
+  if (contactSubmissions.size > 500) {
+    for (const [key, times] of contactSubmissions) {
+      if (!times.some((time) => now - time < windowMs)) contactSubmissions.delete(key)
+    }
+  }
+  return false
 }
 
 function parsePlan(body) {
@@ -198,6 +276,141 @@ app.get('/api/trainers', async (req, res) => {
 app.get('/api/plans', async (req, res) => {
   const { rows } = await pool.query('SELECT * FROM plans ORDER BY id')
   res.json(rows)
+})
+
+app.post('/api/contact', async (req, res) => {
+  // Honeypot: silently accept bot submissions without storing them.
+  if (cleanString(req.body?.website)) {
+    return res.status(201).json({ ok: true, reference: 'MSG-RECEIVED' })
+  }
+  if (contactRateLimited(req.ip)) {
+    return res.status(429).json({ error: 'Too many messages sent. Please try again in a few minutes.' })
+  }
+
+  const parsed = parseContact(req.body)
+  if (parsed.error) return res.status(400).json({ error: parsed.error })
+
+  const c = parsed.value
+  const { rows: [row] } = await pool.query(
+    `INSERT INTO contact_messages (name, email, phone, topic, message)
+     VALUES ($1,$2,$3,$4,$5) RETURNING id, name, created_at`,
+    [c.name, c.email, c.phone, c.topic, c.message])
+
+  res.status(201).json({
+    ok: true,
+    reference: `MSG-${String(row.id).padStart(4, '0')}`,
+    name: row.name,
+    createdAt: row.created_at,
+  })
+})
+
+// ---------- Dashboard (manager/admin) ----------
+
+app.get('/api/dashboard', requireRole(...EDIT_ROLES), async (req, res) => {
+  const isAdmin = req.user.role === 'admin'
+  const empty = { rows: [{}] }
+
+  const [
+    classResult,
+    bookingResult,
+    trainerPlanResult,
+    userResult,
+    messageResult,
+    trendResult,
+    recentResult,
+    topClassResult,
+    todayResult,
+  ] = await Promise.all([
+    pool.query(`
+      SELECT COUNT(*)::int AS classes,
+             COALESCE(SUM(capacity), 0)::int AS capacity,
+             COALESCE(SUM(spots), 0)::int AS open_spots,
+             COALESCE(SUM(GREATEST(capacity - spots, 0)), 0)::int AS booked_spots
+      FROM classes`),
+    pool.query(`
+      SELECT COUNT(DISTINCT b.id)::int AS bookings,
+             COALESCE(SUM(bi.spots), 0)::int AS booking_spots
+      FROM bookings b
+      LEFT JOIN booking_items bi ON bi.booking_id = b.id`),
+    pool.query(`
+      SELECT (SELECT COUNT(*)::int FROM trainers) AS trainers,
+             (SELECT COUNT(*)::int FROM plans) AS plans`),
+    isAdmin
+      ? pool.query(`
+          SELECT COUNT(*)::int AS users,
+                 COUNT(*) FILTER (WHERE role = 'member')::int AS members,
+                 COUNT(*) FILTER (WHERE role = 'manager')::int AS managers,
+                 COUNT(*) FILTER (WHERE role = 'admin')::int AS admins
+          FROM users`)
+      : Promise.resolve(empty),
+    isAdmin
+      ? pool.query(`SELECT COUNT(*) FILTER (WHERE status = 'new')::int AS unread FROM contact_messages`)
+      : Promise.resolve(empty),
+    pool.query(`
+      SELECT to_char(d.day, 'YYYY-MM-DD') AS date,
+             COUNT(b.id)::int AS bookings,
+             COALESCE(SUM(bi.spots), 0)::int AS spots
+      FROM generate_series(current_date - interval '6 days', current_date, interval '1 day') AS d(day)
+      LEFT JOIN bookings b ON b.created_at >= d.day AND b.created_at < d.day + interval '1 day'
+      LEFT JOIN booking_items bi ON bi.booking_id = b.id
+      GROUP BY d.day
+      ORDER BY d.day`),
+    pool.query(`
+      SELECT b.id, b.reference, b.name, b.email, b.created_at,
+             COALESCE(SUM(bi.spots), 0)::int AS spots
+      FROM bookings b
+      LEFT JOIN booking_items bi ON bi.booking_id = b.id
+      GROUP BY b.id
+      ORDER BY b.created_at DESC, b.id DESC
+      LIMIT 5`),
+    pool.query(`
+      SELECT id, day, time, name, coach, capacity,
+             GREATEST(capacity - spots, 0)::int AS booked,
+             CASE WHEN capacity > 0
+               THEN ROUND((GREATEST(capacity - spots, 0)::numeric / capacity) * 100)::int
+               ELSE 0 END AS fill
+      FROM classes
+      ORDER BY fill DESC, booked DESC, time
+      LIMIT 5`),
+    pool.query(`
+      SELECT id, time, name, coach, category, spots, capacity
+      FROM classes
+      WHERE day = to_char(current_date, 'Dy')
+      ORDER BY time
+      LIMIT 8`),
+  ])
+
+  const classStats = classResult.rows[0]
+  const bookingStats = bookingResult.rows[0]
+  const trainerPlanStats = trainerPlanResult.rows[0]
+  const userStats = userResult.rows[0] ?? {}
+  const messageStats = messageResult.rows[0] ?? {}
+  const capacity = Number(classStats.capacity) || 0
+  const bookedSpots = Number(classStats.booked_spots) || 0
+
+  res.json({
+    scope: req.user.role,
+    totals: {
+      classes: classStats.classes,
+      capacity,
+      openSpots: classStats.open_spots,
+      bookedSpots,
+      occupancy: capacity > 0 ? Math.round((bookedSpots / capacity) * 100) : 0,
+      bookings: bookingStats.bookings,
+      bookingSpots: bookingStats.booking_spots,
+      trainers: trainerPlanStats.trainers,
+      plans: trainerPlanStats.plans,
+      users: userStats.users ?? null,
+      members: userStats.members ?? null,
+      managers: userStats.managers ?? null,
+      admins: userStats.admins ?? null,
+      unreadMessages: messageStats.unread ?? null,
+    },
+    trend: trendResult.rows,
+    recentBookings: recentResult.rows,
+    topClasses: topClassResult.rows,
+    todayClasses: todayResult.rows,
+  })
 })
 
 // ---------- Classes (manager/admin) ----------
@@ -557,6 +770,39 @@ app.delete('/api/users/:id', requireRole('admin'), async (req, res) => {
   res.json({ ok: true })
 })
 
+// ---------- Contact messages (admin) ----------
+
+app.get('/api/contact', requireRole('admin'), async (req, res) => {
+  const { rows } = await pool.query(
+    `SELECT id, name, email, phone, topic, message, status, created_at
+     FROM contact_messages ORDER BY created_at DESC, id DESC`)
+  res.json(rows)
+})
+
+app.patch('/api/contact/:id', requireRole('admin'), async (req, res) => {
+  const id = positiveId(req.params.id)
+  if (!id) return res.status(400).json({ error: 'Invalid message id.' })
+
+  const status = cleanString(req.body?.status)
+  if (!CONTACT_STATUSES.includes(status)) return res.status(400).json({ error: 'Choose a valid status.' })
+
+  const { rows: [row] } = await pool.query(
+    `UPDATE contact_messages SET status = $1 WHERE id = $2
+     RETURNING id, name, email, phone, topic, message, status, created_at`,
+    [status, id])
+  if (!row) return res.status(404).json({ error: 'Message not found.' })
+  res.json(row)
+})
+
+app.delete('/api/contact/:id', requireRole('admin'), async (req, res) => {
+  const id = positiveId(req.params.id)
+  if (!id) return res.status(400).json({ error: 'Invalid message id.' })
+
+  const { rowCount } = await pool.query('DELETE FROM contact_messages WHERE id = $1', [id])
+  if (!rowCount) return res.status(404).json({ error: 'Message not found.' })
+  res.json({ ok: true })
+})
+
 app.use('/api', (req, res) => res.status(404).json({ error: 'Not found' }))
 
 // Serve the built client when it exists, so a single process can host both.
@@ -580,7 +826,7 @@ app.use((err, req, res, next) => {
   res.status(status).json({ error: status === 500 ? 'Something went wrong' : err.message })
 })
 
-if (!process.env.VERCEL) {
+if (!env.VERCEL) {
   const server = app.listen(port, () => console.log(`API running on http://localhost:${port}`))
 
   server.on('error', (err) => {

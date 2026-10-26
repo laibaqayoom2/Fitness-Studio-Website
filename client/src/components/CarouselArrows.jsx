@@ -1,4 +1,4 @@
-const button = 'grid size-9 place-items-center rounded-full border border-line text-white transition hover:border-brand disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:border-line'
+const button = 'grid size-9 place-items-center rounded-full border border-line text-white transition hover:border-brand disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:border-line light:text-gray-900'
 
 export default function CarouselArrows({ label = 'items', onPrev, onNext, atStart, atEnd }) {
   return (

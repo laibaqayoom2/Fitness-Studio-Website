@@ -1,9 +1,31 @@
 export const NAV = [
-  { label: 'About Us', href: '#about' },
-  { label: 'Services', href: '#services' },
-  { label: 'Schedule', href: '#schedule' },
-  { label: 'Trainers', href: '#trainers' },
-  { label: 'Plans', href: '#membership' },
+  {
+    label: 'About',
+    href: '#about',
+    children: [
+      { label: 'Our story', href: '#about', description: 'Who we are and what drives the studio.' },
+      { label: 'Why choose FFL', href: '#why', description: 'Facilities, coaching and community.' },
+      { label: 'Meet the coaches', href: '#trainers', description: 'Train with specialists who care.' },
+    ],
+  },
+  {
+    label: 'Training',
+    href: '#services',
+    children: [
+      { label: 'Services', href: '#services', description: 'Personal training, classes, swim and recovery.' },
+      { label: 'Class schedule', href: '#schedule', description: 'See the week and reserve your spot.' },
+      { label: 'Membership plans', href: '#membership', description: 'Simple pricing for every goal.' },
+    ],
+  },
+  { label: 'Contact', href: '#contact' },
+]
+
+export const CONTACT_TOPICS = [
+  { value: 'free-trial', label: 'Free trial week' },
+  { value: 'membership', label: 'Membership plans' },
+  { value: 'personal-training', label: 'Personal training' },
+  { value: 'group-classes', label: 'Group classes' },
+  { value: 'other', label: 'Something else' },
 ]
 
 export const TAGS = ['Personal Training', 'Strength', 'Group Classes', 'Swimming', 'Cardio Equipment', 'Functional Workouts']

@@ -5,7 +5,7 @@ import { CLASSES, DEMO_USERS, PLANS, TRAINERS } from './seed-data.js'
 
 await pool.query(fs.readFileSync(new URL('./schema.sql', import.meta.url), 'utf8'))
 // safe to run twice; CASCADE clears booking/session rows that reference these
-await pool.query('TRUNCATE booking_items, bookings, sessions, users, classes, trainers, plans RESTART IDENTITY CASCADE')
+await pool.query('TRUNCATE booking_items, bookings, sessions, users, classes, trainers, plans, contact_messages RESTART IDENTITY CASCADE')
 
 for (const c of CLASSES) {
   await pool.query(

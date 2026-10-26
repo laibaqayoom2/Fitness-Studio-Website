@@ -10,7 +10,7 @@ export default function Footer() {
   const sectionTo = (href) => (pathname === '/' ? href : `/${href}`)
 
   return (
-    <footer id="contact" className="border-t border-line bg-ink px-pad pb-6 pt-16 text-[0.85rem] text-muted">
+    <footer id="footer" className="border-t border-line bg-ink px-pad pb-6 pt-16 text-[0.85rem] text-muted">
       <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-[1.6fr_1fr_1fr_1.3fr] lg:gap-10">
         <div>
           <Link to="/#top"><img src="/images/logo.png" alt="FFL Studio" width="412" height="165" className="h-[2.8rem] w-auto" /></Link>
@@ -19,7 +19,22 @@ export default function Footer() {
         </div>
         <nav aria-label="Footer">
           <h2 className={title}>Explore</h2>
-          <ul className="grid gap-2.5">{NAV.map((n) => <li key={n.href}><Link className={link} to={sectionTo(n.href)}>{n.label}</Link></li>)}</ul>
+          <ul className="grid gap-2.5">
+            {NAV.map((n) => (
+              <li key={n.label}>
+                <Link className={link} to={sectionTo(n.href)}>{n.label}</Link>
+                {n.children && (
+                  <ul className="mt-2 grid gap-2 border-l border-line pl-3 text-[0.8rem]">
+                    {n.children.map((child) => (
+                      <li key={`${n.label}-${child.href}`}>
+                        <Link className={link} to={sectionTo(child.href)}>{child.label}</Link>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </li>
+            ))}
+          </ul>
         </nav>
         <div>
           <h2 className={title}>Opening hours</h2>
@@ -32,10 +47,15 @@ export default function Footer() {
               <li>12 Example Street, Your City</li>
               <li><a className={link} href="tel:+10000000000">+1 000 000 0000</a></li>
               <li><a className={link} href="mailto:hello@ffl.com">hello@ffl.com</a></li>
+              <li><Link className={link} to={sectionTo('#contact')}>Send us a message &rarr;</Link></li>
             </ul>
           </address>
           <ul aria-label="Social media" className="mt-4 flex flex-wrap gap-x-4 gap-y-2">
-            {SOCIAL.map((s) => <li key={s.label}><a className={link} href={s.href}>{s.label}</a></li>)}
+            {SOCIAL.map((s) => (
+              <li key={s.label}>
+                <a className={link} href={s.href} target="_blank" rel="noreferrer noopener">{s.label}</a>
+              </li>
+            ))}
           </ul>
         </div>
       </div>

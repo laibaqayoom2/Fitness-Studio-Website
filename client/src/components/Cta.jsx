@@ -7,7 +7,7 @@ export default function Cta() {
       <p className="mb-8 mt-5 max-w-[62ch] text-soft">
         Take the first step toward a stronger, healthier you by claiming your free one-week membership at FFL. Experience our state-of-the-art facilities, join our energizing classes, and see why FFL is the perfect place to reach your fitness goals.
       </p>
-      <a className="btn" href="mailto:hello@ffl.com?subject=Free%20trial">Get free trial &#8599;</a>
+      <a className="btn" href="#contact">Claim your free week &rarr;</a>
     </Panel>
   )
 }

@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
   --color-ink: #1b1d22;
   --color-panel: #23252b;
@@ -23,9 +25,36 @@
 
 @layer base {
   html { scroll-behavior: smooth; scroll-padding-top: 4rem; overflow-x: clip; }
-  body { @apply bg-ink font-sans leading-relaxed text-white; }
+  body { @apply bg-ink font-sans leading-relaxed text-white transition-colors duration-300; }
   h1, h2, h3 { line-height: 1.1; }
   :focus-visible { outline: 3px solid var(--color-brand); outline-offset: 3px; }
+
+  .light {
+    --color-ink: #f8fafc;
+    --color-panel: #ffffff;
+    --color-panel-alt: #f1f5f9;
+    --color-card: #ffffff;
+    --color-cta: #ffffff;
+    --color-brand: #ff5a1f;
+    --color-soft: #111827;
+    --color-muted: #475569;
+    --color-line: rgb(15 23 42 / 0.12);
+  }
+
+  .light body {
+    @apply text-gray-900;
+  }
+
+  .light input,
+  .light textarea,
+  .light select {
+    @apply text-gray-900;
+  }
+
+  .light input::placeholder,
+  .light textarea::placeholder {
+    @apply text-gray-400;
+  }
 }
 
 @layer components {
@@ -39,6 +68,12 @@
   background:
     radial-gradient(56rem 34rem at 78% 35%, #7d300f 0%, transparent 62%),
     linear-gradient(165deg, #2b140a, #1b1d22 85%);
+}
+
+.light .bg-hero {
+  background:
+    radial-gradient(56rem 34rem at 78% 35%, rgb(255 90 31 / 0.15) 0%, transparent 62%),
+    linear-gradient(165deg, #fff7f3, #f8f9fa 85%);
 }
 
 /* Fades the hero photo out at the bottom and right edges */

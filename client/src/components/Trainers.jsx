@@ -4,6 +4,7 @@ import Panel from './Panel'
 import CarouselArrows from './CarouselArrows'
 import useFetch from '../hooks/useFetch'
 import useCarousel from '../hooks/useCarousel'
+import { trainerImageSrc } from '../utils/image'
 
 const title = <>Meet the <span className="text-brand">coaches</span> behind your results</>
 
@@ -49,7 +50,7 @@ export default function Trainers() {
             {list.map((t) => (
               <li key={t.id} className="w-[82vw] flex-none snap-start sm:w-[calc((100%-1.5rem)/3)]">
                 <article className="group h-full overflow-hidden rounded-3xl bg-card transition hover:-translate-y-1 hover:shadow-2xl">
-                  <img src={`/images/${t.img}`} alt={`Coach ${t.name}`} width="520" height="640" loading="lazy"
+                  <img src={trainerImageSrc(t.img)} alt={`Coach ${t.name}`} width="520" height="640" loading="lazy"
                     className="aspect-[4/4.5] w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]" />
                   <div className="px-6 pb-6 pt-5">
                     <h3 className="text-[1.25rem]">{t.name}</h3>

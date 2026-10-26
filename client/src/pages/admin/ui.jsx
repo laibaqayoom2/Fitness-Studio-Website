@@ -28,13 +28,14 @@ export function Notice({ error, success }) {
   )
 }
 
-export function SectionHeader({ title, description }) {
+export function SectionHeader({ title, description, action }) {
   return (
     <div className="flex flex-wrap items-end justify-between gap-3">
       <div>
         <h2 className="text-[1.35rem] font-bold">{title}</h2>
         {description && <p className="mt-1 max-w-[70ch] text-[0.85rem] text-muted">{description}</p>}
       </div>
+      {action && <div>{action}</div>}
     </div>
   )
 }
