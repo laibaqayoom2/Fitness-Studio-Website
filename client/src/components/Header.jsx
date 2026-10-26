@@ -6,7 +6,7 @@ import useFetch from '../hooks/useFetch'
 import { MemberBookingsInline, MemberBookingsMenu } from './MemberBookings'
 import { useTheme } from '../theme/useTheme'
 
-const navLink = 'block py-2 text-[#e8e8ea] transition-colors hover:text-brand md:py-0 light:text-gray-900 light:hover:text-brand'
+const navLink = 'block py-2 text-soft transition-colors hover:text-brand md:py-0'
 const slug = (value) => value.toLowerCase().replace(/[^a-z0-9]+/g, '-')
 const canHover = () => typeof window !== 'undefined' && window.matchMedia('(hover: hover) and (min-width: 768px)').matches
 
@@ -59,7 +59,7 @@ export default function Header() {
   }
 
   return (
-    <header ref={headerRef} className="fixed left-1/2 top-3.5 z-20 flex w-[min(1180px,calc(100%-2rem))] -translate-x-1/2 flex-wrap items-center justify-between gap-2 rounded-3xl border border-line bg-[rgb(32_26_24/0.85)] px-4 py-3 backdrop-blur-md transition-colors md:rounded-full md:py-2.5 md:pl-6 md:pr-3 light:bg-white/90 light:text-gray-900">
+    <header ref={headerRef} className="fixed left-1/2 top-3.5 z-20 flex w-[min(1180px,calc(100%-2rem))] -translate-x-1/2 flex-wrap items-center justify-between gap-2 rounded-3xl border border-line bg-panel/90 px-4 py-3 backdrop-blur-md transition-colors md:rounded-full md:py-2.5 md:pl-6 md:pr-3 light:bg-panel/90">
       <Link to="/#top" onClick={close} className="flex flex-none items-center">
         <img src="/images/logo.png" alt="FFL Studio" width="412" height="165" className="h-[2.4rem] w-auto" />
       </Link>
