@@ -6,7 +6,7 @@ import useFetch from '../hooks/useFetch'
 import { MemberBookingsInline, MemberBookingsMenu } from './MemberBookings'
 import { useTheme } from '../theme/useTheme'
 
-const navLink = 'block py-2 text-white transition-colors hover:text-brand md:py-0 light:text-gray-900'
+const navLink = 'block py-2 text-[#e8e8ea] transition-colors hover:text-brand md:py-0 light:text-gray-900 light:hover:text-brand'
 const slug = (value) => value.toLowerCase().replace(/[^a-z0-9]+/g, '-')
 const canHover = () => typeof window !== 'undefined' && window.matchMedia('(hover: hover) and (min-width: 768px)').matches
 
@@ -59,7 +59,7 @@ export default function Header() {
   }
 
   return (
-    <header ref={headerRef} className="fixed left-1/2 top-3.5 z-20 flex w-[min(1180px,calc(100%-2rem))] -translate-x-1/2 flex-wrap items-center justify-between gap-2 rounded-3xl border border-line bg-panel/90 px-4 py-3 backdrop-blur-md transition-colors md:rounded-full md:py-2.5 md:pl-6 md:pr-3 light:bg-panel/90">
+    <header ref={headerRef} className="fixed left-1/2 top-3.5 z-20 flex w-[min(1180px,calc(100%-2rem))] -translate-x-1/2 flex-wrap items-center justify-between gap-2 rounded-3xl border border-line bg-[rgb(32_26_24/0.85)] px-4 py-3 backdrop-blur-md transition-colors md:rounded-full md:py-2.5 md:pl-6 md:pr-3 light:bg-white/90 light:text-gray-900">
       <Link to="/#top" onClick={close} className="flex flex-none items-center">
         <img src="/images/logo.png" alt="FFL Studio" width="412" height="165" className="h-[2.4rem] w-auto" />
       </Link>
@@ -73,7 +73,7 @@ export default function Header() {
           setOpen((o) => !o)
           setOpenMenu(null)
         }}
-        className="grid size-10 place-items-center rounded-full border border-line text-white md:hidden light:text-gray-900"
+        className="grid size-10 place-items-center rounded-full border border-line md:hidden"
       >
         <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
           {open ? <path d="M6 6l12 12M18 6L6 18" /> : <path d="M4 7h16M4 12h16M4 17h16" />}
@@ -135,9 +135,9 @@ export default function Header() {
                         <Link
                           to={sectionTo(child.href)}
                           onClick={close}
-                          className="block rounded-xl px-3 py-2.5 transition hover:bg-white/5"
+                          className="block rounded-xl px-3 py-2.5 transition hover:bg-white/5 light:hover:bg-black/5"
                         >
-                          <span className="block text-[0.85rem] font-semibold text-white">{child.label}</span>
+                          <span className="block text-[0.85rem] font-semibold text-white light:text-gray-900">{child.label}</span>
                           {child.description && (
                             <span className="mt-0.5 block text-[0.72rem] leading-snug text-muted">{child.description}</span>
                           )}
@@ -161,17 +161,17 @@ export default function Header() {
                 </p>
                 <MemberBookingsInline bookings={bookings} loading={bookingsLoading} error={bookingsError} onNavigate={close} />
                 {canManage && (
-                  <Link to="/admin" onClick={close} className="rounded-full border border-line px-4 py-2 text-center text-white transition hover:border-brand">
+                  <Link to="/admin" onClick={close} className="rounded-full border border-line px-4 py-2 text-center text-white transition hover:border-brand light:text-gray-900">
                     Dashboard
                   </Link>
                 )}
-                <button type="button" onClick={handleLogout} className="rounded-full border border-line px-4 py-2 text-center text-white transition hover:border-brand">
+                <button type="button" onClick={handleLogout} className="rounded-full border border-line px-4 py-2 text-center text-white transition hover:border-brand light:text-gray-900">
                   Log out
                 </button>
               </div>
             ) : (
               <div className="grid gap-2">
-                <Link to="/login" onClick={close} className="rounded-full border border-line px-4 py-2 text-center text-white transition hover:border-brand">
+                <Link to="/login" onClick={close} className="rounded-full border border-line px-4 py-2 text-center text-white transition hover:border-brand light:text-gray-900">
                   Log in
                 </Link>
                 <Link to="/signup" onClick={close} className="btn block text-center">Sign up</Link>
@@ -194,7 +194,7 @@ export default function Header() {
           <span className="text-[0.8rem] text-muted">...</span>
         ) : user ? (
           <>
-            <span className="max-w-36 truncate text-[0.8rem] text-white light:text-gray-900">
+            <span className="max-w-36 truncate text-[0.8rem] text-muted light:text-gray-600">
               {user.name}
               {canManage && <span className="ml-1 text-brand">({user.role})</span>}
             </span>
@@ -210,7 +210,7 @@ export default function Header() {
           </>
         ) : (
           <>
-            <Link to="/login" className="text-[0.85rem] text-white transition-colors hover:text-brand light:text-gray-900">
+            <Link to="/login" className="text-[0.85rem] text-soft transition-colors hover:text-white light:text-gray-700 light:hover:text-gray-900">
               Log in
             </Link>
             <Link to="/signup" className="btn px-5 py-2 text-[0.85rem]">Sign up</Link>
