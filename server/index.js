@@ -17,6 +17,7 @@ import {
   createOrder,
   markOrderPaid,
   markOrderCanceled,
+  cancelSupersededCheckouts,
   getOrderForUser,
 } from './orders.js'
 
@@ -810,6 +811,10 @@ app.post('/api/orders/checkout', requireAuth, async (req, res) => {
   try {
     const session = await createCheckoutSession({ order, item: order.items[0], origin: clientOrigin })
     await pool.query('UPDATE orders SET stripe_session_id = $1 WHERE id = $2', [session.id, order.id])
+    // The member's fresh checkout replaces their older unpaid ones: same plan
+    // re-bought within 3 days (or stale > 3 days) cancels the previous pending
+    // payment, and its Stripe session is expired so it can't be paid twice.
+    const superseded = await cancelSupersededCheckouts({ userId: req.user.id, keepOrderId: order.id, planId: plan.id })
     res.status(201).json({
       orderId: order.id,
       reference: order.reference,
@@ -817,6 +822,7 @@ app.post('/api/orders/checkout', requireAuth, async (req, res) => {
       amountTotal: order.amount_total,
       currency: order.currency,
       checkoutUrl: session.url,
+      ...(superseded > 0 ? { supersededCheckouts: superseded } : {}),
     })
   } catch (err) {
     // No Checkout Session means no order: drop the pending row so a retry

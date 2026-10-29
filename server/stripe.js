@@ -94,6 +94,21 @@ export async function retrieveCheckoutSession(sessionId) {
   return stripe.checkout.sessions.retrieve(sessionId)
 }
 
+// Best-effort expire for a session that no longer belongs to a payable order
+// (superseded pending checkouts). Fails harmlessly when the session was
+// already paid, completed, or expired — Stripe simply returns an error and the
+// payment (if any) continues through the normal webhook path.
+export async function expireCheckoutSession(sessionId) {
+  if (!sessionId) return false
+  try {
+    const stripe = assertStripeConfigured()
+    await stripe.checkout.sessions.expire(sessionId)
+    return true
+  } catch {
+    return false
+  }
+}
+
 // Pure decision for resuming a pending order from a re-read session:
 // - 'paid'    → the payment settled (mark the order paid, like the webhook)
 // - 'open'    → the hosted page is still payable; return its url

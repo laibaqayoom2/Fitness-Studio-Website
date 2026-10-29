@@ -1,6 +1,6 @@
 import crypto from 'node:crypto'
 import pool from './db.js'
-import { resolveCheckoutAction } from './stripe.js'
+import { resolveCheckoutAction, expireCheckoutSession } from './stripe.js'
 
 // ---------- Checkout validation (pure, unit-testable) ----------
 
@@ -75,14 +75,17 @@ export async function createOrder({ userId, plan, quantity }) {
 }
 
 // Payments are only ever confirmed by a verified Stripe webhook, never by the
-// browser landing on the success page. The update is deliberately restricted
-// to orders still `pending`, which makes duplicate deliveries harmless: the
-// second webhook finds no `pending` row and leaves the order untouched.
+// browser landing on the success page. The update applies to orders still
+// `pending` and — deliberately — to ones we just canceled as superseded: if
+// Stripe reports a settled payment for such an order (the member paid from an
+// open checkout tab before it was expired), the payment is real and must be
+// recorded. Either way duplicate deliveries are harmless: the second one finds
+// no row to transition.
 export async function markOrderPaid(sessionId) {
   const { rows: [order] } = await pool.query(
     `UPDATE orders
      SET status = 'paid', paid_at = COALESCE(paid_at, now())
-     WHERE stripe_session_id = $1 AND status = 'pending'
+     WHERE stripe_session_id = $1 AND status IN ('pending', 'canceled')
      RETURNING id, status`,
     [sessionId])
   return order ?? null
@@ -100,9 +103,48 @@ export async function markOrderCanceled(sessionId) {
 // Given the current order status and a verified event, decide whether the
 // order should transition. Kept as a pure function so idempotency rules are
 // unit-testable without a database.
+// Given the current order status and a verified event, decide whether the
+// order should transition. Kept as a pure function so idempotency rules are
+// unit-testable without a database. `canceled` orders may still be marked
+// paid by a verified settled payment (supersede race), but never if the event
+// does not itself prove payment.
 export function shouldMarkOrderPaid(orderStatus, event) {
-  if (orderStatus !== 'pending') return false // already paid/canceled → duplicate event
+  if (orderStatus === 'paid') return false // duplicate delivery
+  if (orderStatus !== 'pending' && orderStatus !== 'canceled') return false
   return resolveCheckoutAction(event).action === 'paid'
+}
+
+// ---------- Superseding abandoned checkouts ----------
+
+// A re-purchase of the same plan makes the member's older still-pending
+// checkout obsolete. Rules:
+//  - the new (kept) order is never touched;
+//  - earlier pending orders for the SAME plan are canceled, as requested,
+//    when the re-purchase happens within 3 DAYS of the pending one;
+//  - any membership pending older than 3 days is stale and canceled too;
+//  - paid or canceled orders are never modified.
+// Because a canceled order must never be paid afterwards, its Stripe session
+// is first expired (best-effort: if Stripe cannot expire it — e.g. it was
+// already paid — the payment follows the normal webhook path to 'paid').
+export async function cancelSupersededCheckouts({ userId, keepOrderId, planId }) {
+  const { rows: pending } = await pool.query(
+    `SELECT o.id, o.stripe_session_id FROM orders o
+     JOIN order_items i ON i.order_id = o.id
+     WHERE o.user_id = $1 AND o.status = 'pending' AND o.id <> $2
+       AND (i.plan_id = $3
+            OR o.created_at < now() - interval '3 days')`,
+    [userId, keepOrderId, planId])
+
+  let canceled = 0
+  for (const row of pending) {
+    await expireCheckoutSession(row.stripe_session_id) // best-effort
+    const { rowCount } = await pool.query(
+      `UPDATE orders SET status = 'canceled'
+       WHERE id = $1 AND status = 'pending'`,
+      [row.id])
+    canceled += rowCount
+  }
+  return canceled
 }
 
 // ---------- Reads ----------

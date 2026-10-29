@@ -72,16 +72,19 @@ describe('shouldMarkOrderPaid (idempotent payment transitions)', () => {
     expect(shouldMarkOrderPaid('pending', paidCompletedEvent)).toBe(true)
   })
 
-  it('does nothing on duplicate success deliveries (order already paid)', () => {
+  it('no-ops on duplicate success deliveries (order already paid)', () => {
     expect(shouldMarkOrderPaid('paid', paidCompletedEvent)).toBe(false)
   })
 
-  it('does nothing for canceled orders', () => {
-    expect(shouldMarkOrderPaid('canceled', paidCompletedEvent)).toBe(false)
+  it('lets a verified settled payment record a superseded-canceled order', () => {
+    // Supersede race: canceled as re-purchased, but the member paid the old
+    // session before it expired. The verified webhook still records it.
+    expect(shouldMarkOrderPaid('canceled', paidCompletedEvent)).toBe(true)
   })
 
-  it('never marks paid when the payment itself is not settled', () => {
+  it('never marks anything paid when the payment itself is not settled', () => {
     expect(shouldMarkOrderPaid('pending', unpaidCompletedEvent)).toBe(false)
+    expect(shouldMarkOrderPaid('canceled', unpaidCompletedEvent)).toBe(false)
   })
 
   it('ignores unrelated Stripe events', () => {

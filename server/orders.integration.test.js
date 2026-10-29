@@ -99,6 +99,42 @@ describe.skipIf(!runIfDatabase)('orders persistence (integration)', () => {
     expect(finalOrder.paid_at).not.toBeNull()
   })
 
+  it('cancels a pending same-plan checkout superseded by a fresh one (and never touches paid orders)', async () => {
+    const old = await ordersModule.createOrder({ userId: userA.id, plan, quantity: 1 })
+    const fresh = await ordersModule.createOrder({ userId: userA.id, plan, quantity: 1 })
+    await pool.query('UPDATE orders SET stripe_session_id = $1 WHERE id = $2', ['cs_test_supersede_old', old.id])
+    await pool.query('UPDATE orders SET stripe_session_id = $1 WHERE id = $2', ['cs_test_supersede_fresh', fresh.id])
+
+    // No Stripe client misuse: expire is best-effort and succeeds or is skipped.
+    // Every other pending same-plan order of this member is superseded (the
+    // suite's earlier tests may have left several), the fresh one never is.
+    const { rows: [{ n: pendingBefore }] } = await pool.query(
+      `SELECT COUNT(*)::int AS n FROM orders o
+       JOIN order_items i ON i.order_id = o.id
+       WHERE o.user_id = $1 AND o.status = 'pending' AND o.id <> $2 AND i.plan_id = $3`,
+      [userA.id, fresh.id, plan.id])
+    const canceled = await ordersModule.cancelSupersededCheckouts({
+      userId: userA.id, keepOrderId: fresh.id, planId: plan.id,
+    })
+
+    expect(canceled).toBe(pendingBefore)
+    const { rows } = await pool.query(
+      'SELECT id, status FROM orders WHERE id = ANY($1::int[]) ORDER BY id', [[old.id, fresh.id]])
+    expect(rows.map((r) => `${r.id}:${r.status}`)).toEqual([`${old.id}:canceled`, `${fresh.id}:pending`])
+  })
+
+  it('records a real payment for an order already canceled as superseded', async () => {
+    const created = await ordersModule.createOrder({ userId: userA.id, plan, quantity: 1 })
+    await pool.query('UPDATE orders SET stripe_session_id = $1, status = $2 WHERE id = $3',
+      ['cs_test_canceled_paid', 'canceled', created.id])
+
+    const marked = await ordersModule.markOrderPaid('cs_test_canceled_paid')
+    expect(marked?.status).toBe('paid') // the verified webhook recorded the real payment
+
+    const second = await ordersModule.markOrderPaid('cs_test_canceled_paid')
+    expect(second).toBeNull() // duplicate delivery no-op
+  })
+
   it('refuses to mark an order paid without a settled Stripe payment', async () => {
     const created = await ordersModule.createOrder({ userId: userB.id, plan, quantity: 1 })
     await pool.query('UPDATE orders SET stripe_session_id = $1 WHERE id = $2', ['cs_test_unpaid_1', created.id])

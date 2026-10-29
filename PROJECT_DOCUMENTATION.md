@@ -88,6 +88,12 @@ Security invariants:
   # copy printed whsec_... into server/.env (STRIPE_WEBHOOK_SECRET), restart server
   ```
 
+* **Superseded checkouts** (`cancelSupersededCheckouts`, run on every new checkout):
+  * a member re-buying the same plan cancels their older still-*pending* payments (same plan within 3 days, or anything pending older than 3 days);
+  * the superseded Stripe session is expired best-effort (`sessions.expire`) so the old hosted page can no longer be paid;
+  * the payment state machine still allows a verified settled payment to record a cancelled order as `paid` (`canceled → paid`), covering the expire/pay race — duplicate deliveries remain no-ops.
+  * the checkout response includes `supersededCheckouts: <n>` when rows were cancelled.
+
 ### Membership model shown to members + resuming un-finished payments
 
 `/account` treats a paid order as a 30-day membership from `paid_at`: card shows plan, price, member-since, and the renewal date; past that date it flips to "Renewed — renew your plan →" (display-only; nothing is cancelled server-side).
