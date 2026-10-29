@@ -3,12 +3,87 @@ import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { NAV } from '../data'
 import { useAuth } from '../auth/AuthContext'
 import useFetch from '../hooks/useFetch'
-import { MemberBookingsInline, MemberBookingsMenu } from './MemberBookings'
+import Notifications from './Notifications'
 import { useTheme } from '../theme/useTheme'
 
 const navLink = 'block py-2 text-[#e8e8ea] transition-colors hover:text-brand md:py-0 light:text-gray-900 light:hover:text-brand'
 const slug = (value) => value.toLowerCase().replace(/[^a-z0-9]+/g, '-')
 const canHover = () => typeof window !== 'undefined' && window.matchMedia('(hover: hover) and (min-width: 768px)').matches
+
+// The signed-in user's account dropdown: their bookings + membership live on
+// /account, staff also get the dashboard, and logout closes the session.
+function AccountMenu({ user, canManage, onLogout }) {
+  const [open, setOpen] = useState(false)
+  const menuRef = useRef(null)
+
+  useEffect(() => {
+    if (!open) return
+    const onKeyDown = (e) => {
+      if (e.key === 'Escape') setOpen(false)
+    }
+    const onPointerDown = (e) => {
+      if (!menuRef.current?.contains(e.target)) setOpen(false)
+    }
+    document.addEventListener('keydown', onKeyDown)
+    document.addEventListener('pointerdown', onPointerDown)
+    return () => {
+      document.removeEventListener('keydown', onKeyDown)
+      document.removeEventListener('pointerdown', onPointerDown)
+    }
+  }, [open])
+
+  return (
+    <div ref={menuRef} className="relative">
+      <button
+        type="button"
+        aria-expanded={open}
+        aria-controls="account-menu"
+        onClick={() => setOpen((value) => !value)}
+        className="flex max-w-44 items-center gap-1.5 rounded-full border border-line px-4 py-2 text-[0.8rem] text-white transition hover:border-brand light:text-gray-900"
+      >
+        <span className="truncate font-semibold">{user.name}</span>
+        {canManage && <span className="flex-none text-[0.7rem] font-bold text-brand">({user.role})</span>}
+        <svg viewBox="0 0 24 24" aria-hidden="true" className={`size-3 flex-none transition-transform duration-200 ${open ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <path d="m6 9 6 6 6-6" />
+        </svg>
+      </button>
+
+      {open && (
+        <div
+          id="account-menu"
+          className="absolute right-0 top-full z-30 mt-3 w-56 rounded-2xl border border-line bg-card p-2 text-white shadow-2xl light:text-gray-900"
+        >
+          <Link
+            to="/account"
+            onClick={() => setOpen(false)}
+            className="block rounded-xl px-3 py-2.5 text-[0.85rem] font-semibold transition hover:bg-white/5 light:hover:bg-black/5"
+          >
+            My bookings &amp; membership
+          </Link>
+          {canManage && (
+            <Link
+              to="/admin"
+              onClick={() => setOpen(false)}
+              className="block rounded-xl px-3 py-2.5 text-[0.85rem] font-semibold transition hover:bg-white/5 light:hover:bg-black/5"
+            >
+              Dashboard
+            </Link>
+          )}
+          <button
+            type="button"
+            onClick={() => {
+              setOpen(false)
+              onLogout()
+            }}
+            className="block w-full rounded-xl px-3 py-2.5 text-left text-[0.85rem] font-semibold transition hover:bg-white/5 light:hover:bg-black/5"
+          >
+            Log out
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
 
 export default function Header() {
   const [open, setOpen] = useState(false)
@@ -20,6 +95,8 @@ export default function Header() {
   const { theme, toggleTheme } = useTheme()
   const { data: bookings, loading: bookingsLoading, error: bookingsError, refetch: refetchBookings } =
     useFetch(user ? '/api/bookings/mine' : null, user?.id)
+  const { data: orders, loading: ordersLoading, error: ordersError } =
+    useFetch(user ? '/api/orders/mine' : null, user?.id)
   const close = () => {
     setOpen(false)
     setOpenMenu(null)
@@ -107,7 +184,7 @@ export default function Header() {
                       aria-expanded={isOpen}
                       aria-controls={menuId}
                       aria-label={`${isOpen ? 'Hide' : 'Show'} ${item.label} links`}
-                      className="grid size-8 place-items-center rounded-full text-muted transition hover:bg-white/10 hover:text-white md:size-6"
+                      className="grid size-8 place-items-center rounded-full text-muted transition hover:bg-white/10 hover:text-white light:hover:bg-black/5 light:hover:text-gray-900 md:size-6"
                     >
                       <svg
                         viewBox="0 0 24 24"
@@ -128,7 +205,7 @@ export default function Header() {
                 {item.children && (
                   <ul
                     id={menuId}
-                    className={`${isOpen ? 'grid' : 'hidden'} mt-1 gap-1 rounded-2xl border border-line bg-panel p-2 md:absolute md:left-0 md:top-full md:z-30 md:mt-3 md:w-72 md:shadow-2xl md:shadow-black/50`}
+                    className={`${isOpen ? 'grid' : 'hidden'} mt-1 gap-1 rounded-2xl border border-line bg-panel p-2 md:absolute md:left-0 md:top-full md:z-30 md:mt-3 md:w-72 md:shadow-2xl md:shadow-black/50 md:light:shadow-black/10`}
                   >
                     {item.children.map((child) => (
                       <li key={`${item.label}-${child.href}`}>
@@ -156,10 +233,12 @@ export default function Header() {
             ) : user ? (
               <div className="grid gap-2">
                 <p className="text-[0.8rem] text-muted">
-                  Signed in as <span className="text-white">{user.name}</span>
+                  Signed in as <span className="text-white light:text-gray-900">{user.name}</span>
                   {canManage && <span className="ml-1 text-brand">({user.role})</span>}
                 </p>
-                <MemberBookingsInline bookings={bookings} loading={bookingsLoading} error={bookingsError} onNavigate={close} />
+                <Link to="/account" onClick={close} className="rounded-full border border-line px-4 py-2 text-center text-white transition hover:border-brand light:text-gray-900">
+                  My account
+                </Link>
                 {canManage && (
                   <Link to="/admin" onClick={close} className="rounded-full border border-line px-4 py-2 text-center text-white transition hover:border-brand light:text-gray-900">
                     Dashboard
@@ -194,19 +273,14 @@ export default function Header() {
           <span className="text-[0.8rem] text-muted">...</span>
         ) : user ? (
           <>
-            <span className="max-w-36 truncate text-[0.8rem] text-muted light:text-gray-600">
-              {user.name}
-              {canManage && <span className="ml-1 text-brand">({user.role})</span>}
-            </span>
-            <MemberBookingsMenu bookings={bookings} loading={bookingsLoading} error={bookingsError} />
-            {canManage && (
-              <Link to="/admin" className="rounded-full border border-line px-4 py-2 text-[0.8rem] text-white transition hover:border-brand light:text-gray-900 light:hover:text-brand">
-                Dashboard
-              </Link>
-            )}
-            <button type="button" onClick={handleLogout} className="rounded-full border border-line px-4 py-2 text-[0.8rem] text-white transition hover:border-brand light:text-gray-900 light:hover:text-brand">
-              Log out
-            </button>
+            <AccountMenu user={user} canManage={canManage} onLogout={handleLogout} />
+            <Notifications
+              datasets={[
+                { id: 'bookings', bookings, loading: bookingsLoading, error: bookingsError },
+                { id: 'orders', orders, loading: ordersLoading, error: ordersError },
+              ]}
+              userId={user.id}
+            />
           </>
         ) : (
           <>

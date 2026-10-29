@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { createPortal } from 'react-dom'
+import { Link } from 'react-router-dom'
 import Panel from './Panel'
 import SpotsStepper from './SpotsStepper'
 import CarouselArrows from './CarouselArrows'
@@ -8,8 +9,6 @@ import useFetch from '../hooks/useFetch'
 import { apiPost } from '../api'
 import { useAuth } from '../auth/AuthContext'
 import { DAYS } from '../data'
-
-const inputClass = 'w-full rounded-xl border border-line bg-ink/50 px-4 py-2.5 text-[0.9rem] text-white placeholder:text-muted focus:border-brand focus:outline-none light:bg-white light:text-gray-900'
 
 export default function Schedule() {
   const { data, loading, error, refetch } = useFetch('/api/classes')
@@ -22,7 +21,6 @@ export default function Schedule() {
   const [booked, setBooked] = useState({})                  // { [classId]: spots }
   const [confirmedBooking, setConfirmedBooking] = useState(null) // server response
   const [view, setView] = useState(null)                    // null | 'review' | 'confirmed'
-  const [details, setDetails] = useState({ name: null, email: null })
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState(null)
   const dialogRef = useRef(null)
@@ -79,15 +77,20 @@ export default function Schedule() {
     if (submitting) return
     setSubmitError(null)
 
-    const name = (details.name ?? user?.name ?? '').trim()
-    const email = (details.email ?? user?.email ?? '').trim()
+    // Booking is members-only: the identity always comes from the session.
+    if (!user) {
+      setSubmitError('Please log in to book classes.')
+      return
+    }
+    const name = (user.name ?? '').trim()
+    const email = (user.email ?? '').trim()
 
     if (!name) {
-      setSubmitError('Please enter your name.')
+      setSubmitError('Your profile is missing a name.')
       return
     }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      setSubmitError('Please enter a valid email address.')
+      setSubmitError('Your profile is missing a valid email address.')
       return
     }
 
@@ -149,7 +152,7 @@ export default function Schedule() {
               {left === 0 ? <span className="rounded-full bg-white/10 px-2 py-0.5 text-[0.7rem] uppercase tracking-[0.08em] text-white light:bg-black/10 light:text-gray-900">Full</span> : `${left} of ${capacity} spots left`}
             </span>
             <SpotsStepper label={`Spots for ${c.name} on ${c.day}`} max={c.spots}
-              value={mine} disabled={confirmed} onChange={(n) => setSpots(c.id, n)} />
+              value={mine} disabled={confirmed || !user} onChange={(n) => setSpots(c.id, n)} />
           </div>
         </div>
       </li>
@@ -173,10 +176,10 @@ export default function Schedule() {
           const picks = picksOn(d)
           return (
             <button key={d} type="button" aria-pressed={day === d} onClick={() => setDay(d)}
-              className={`relative rounded-xl py-2.5 text-[0.85rem] font-semibold transition ${day === d ? 'bg-brand text-ink' : 'bg-card text-soft hover:text-white'}`}>
+              className={`relative rounded-xl py-2.5 text-[0.85rem] font-semibold transition ${day === d ? 'bg-brand text-ink' : 'bg-card text-soft hover:text-white light:hover:text-gray-900'}`}>
               {d}
               {picks > 0 && (
-                <span className="absolute -right-1 -top-1 grid size-5 place-items-center rounded-full bg-white text-[0.65rem] font-bold text-ink">
+                <span className="absolute -right-1 -top-1 grid size-5 place-items-center rounded-full bg-white text-[0.65rem] font-bold text-ink light:bg-gray-900 light:text-white">
                   <span className="sr-only">booked: </span>{picks}
                 </span>
               )}
@@ -185,11 +188,26 @@ export default function Schedule() {
         })}
       </div>
 
+      {/* Members-only booking; the steppers below are disabled for guests. */}
+      {!user && (
+        <p className="mt-4 text-[0.85rem] text-muted">
+          Booking is for FFL members.{' '}
+          <Link to="/login?redirect=/%23schedule" onClick={() => undefined} className="text-brand transition hover:opacity-80">
+            Log in
+          </Link>{' '}
+          or{' '}
+          <Link to="/signup" onClick={() => undefined} className="text-brand transition hover:opacity-80">
+            sign up
+          </Link>{' '}
+          to reserve your spots.
+        </p>
+      )}
+
       <p aria-live="polite" className="mt-4 text-[0.85rem] text-muted">
         {visible.length} {visible.length === 1 ? 'class' : 'classes'} on {day} &middot; {selectedTotal} {selectedTotal === 1 ? 'spot' : 'spots'} selected
         {user && <span className="ml-1 text-soft">· Signed in as {user.name}</span>}
       </p>
-      {error && <p role="alert" className="mt-2 text-[0.85rem] text-red-300">Could not refresh availability ({error}).</p>}
+      {error && <p role="alert" className="mt-2 text-[0.85rem] text-red-300 light:text-red-700">Could not refresh availability ({error}).</p>}
 
       <div className="mt-4 flex flex-wrap items-center gap-2">
         {categories.map((item) => (
@@ -198,7 +216,7 @@ export default function Schedule() {
             type="button"
             onClick={() => setCategory(item)}
             className={`rounded-full px-3 py-1.5 text-[0.75rem] transition ${
-              category === item ? 'bg-brand font-semibold text-ink' : 'border border-line text-soft hover:text-white'
+              category === item ? 'bg-brand font-semibold text-ink' : 'border border-line text-soft hover:text-white light:hover:text-gray-900'
             }`}
           >
             {item}
@@ -208,7 +226,7 @@ export default function Schedule() {
           type="button"
           onClick={() => setHideFull((prev) => !prev)}
           className={`rounded-full px-3 py-1.5 text-[0.75rem] transition ${
-            hideFull ? 'bg-brand font-semibold text-ink' : 'border border-line text-soft hover:text-white'
+            hideFull ? 'bg-brand font-semibold text-ink' : 'border border-line text-soft hover:text-white light:hover:text-gray-900'
           }`}
         >
           Hide full classes
@@ -217,7 +235,7 @@ export default function Schedule() {
           <button
             type="button"
             onClick={() => { setCategory('All'); setHideFull(false) }}
-            className="rounded-full px-3 py-1.5 text-[0.75rem] text-muted transition hover:text-white"
+            className="rounded-full px-3 py-1.5 text-[0.75rem] text-muted transition hover:text-white light:hover:text-gray-900"
           >
             Clear filters
           </button>
@@ -264,14 +282,14 @@ export default function Schedule() {
       <dialog ref={dialogRef} onClose={() => setView(null)}
         onCancel={(e) => { if (submitting) e.preventDefault() }}
         onClick={(e) => { if (e.target === e.currentTarget && !submitting) setView(null) }}
-        className="m-auto w-[min(32rem,calc(100%-2rem))] rounded-3xl border border-line bg-card p-0 text-white backdrop:bg-black/70">
+        className="m-auto w-[min(32rem,calc(100%-2rem))] rounded-3xl border border-line bg-card p-0 text-white backdrop:bg-black/70 light:text-gray-900">
         <form className="p-6" onSubmit={(e) => { e.preventDefault(); if (view === 'review') confirmBooking() }}>
           <div className="flex items-start justify-between gap-4">
-            <h3 className={`text-[1.25rem] font-bold ${view === 'confirmed' ? 'text-green-300' : ''}`}>
+            <h3 className={`text-[1.25rem] font-bold ${view === 'confirmed' ? 'text-green-300 light:text-green-700' : ''}`}>
               {view === 'confirmed' ? 'Booking confirmed!' : 'Your booking'}
             </h3>
             <button type="button" aria-label="Close" disabled={submitting} onClick={() => setView(null)}
-              className="grid size-8 flex-none place-items-center rounded-full hover:bg-white/10 disabled:opacity-30">&times;</button>
+              className="grid size-8 flex-none place-items-center rounded-full hover:bg-white/10 light:hover:bg-black/10 disabled:opacity-30">&times;</button>
           </div>
 
           {view === 'review' && (
@@ -279,30 +297,18 @@ export default function Schedule() {
               <p className="mt-2 text-[0.9rem] text-soft">
                 {total} {plural} across {bookedClasses.length} {bookedClasses.length === 1 ? 'class' : 'classes'}.
               </p>
+              <p className="mt-1 text-[0.8rem] text-muted">
+                Booking as <span className="font-semibold text-white light:text-gray-900">{user?.name}</span> · {user?.email}
+              </p>
 
-              <div className="mt-5 grid gap-3 sm:grid-cols-2">
-                <label className="text-[0.8rem] font-semibold text-soft">
-                  Name
-                  <input type="text" required autoComplete="name" value={details.name ?? user?.name ?? ''}
-                    onChange={(e) => setDetails((prev) => ({ ...prev, name: e.target.value }))}
-                    className={`mt-1.5 ${inputClass}`} placeholder="Your name" />
-                </label>
-                <label className="text-[0.8rem] font-semibold text-soft">
-                  Email
-                  <input type="email" required autoComplete="email" value={details.email ?? user?.email ?? ''}
-                    onChange={(e) => setDetails((prev) => ({ ...prev, email: e.target.value }))}
-                    className={`mt-1.5 ${inputClass}`} placeholder="you@example.com" />
-                </label>
-              </div>
-
-              {submitError && <p role="alert" className="mt-3 text-[0.85rem] text-red-300">{submitError}</p>}
+              {submitError && <p role="alert" className="mt-3 text-[0.85rem] text-red-300 light:text-red-700">{submitError}</p>}
             </>
           )}
 
           {view === 'confirmed' && (
             <>
               <p role="status" className="mt-2 text-soft">
-                You reserved {total} {plural}. Reference <strong className="text-white">{confirmedBooking.reference}</strong>.
+                You reserved {total} {plural}. Reference <strong className="text-white light:text-gray-900">{confirmedBooking.reference}</strong>.
               </p>
               <p className="mt-1 text-[0.85rem] text-muted">
                 Saved under {confirmedBooking.email}.

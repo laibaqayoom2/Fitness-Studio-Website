@@ -6,6 +6,9 @@ import Home from './pages/Home'
 import Login from './pages/Login'
 import Signup from './pages/Signup'
 import Admin from './pages/Admin'
+import CheckoutSuccess from './pages/CheckoutSuccess'
+import CheckoutCancelled from './pages/CheckoutCancelled'
+import Account from './pages/Account'
 import RequireRole from './components/RequireRole'
 
 export default function App() {
@@ -16,6 +19,9 @@ export default function App() {
           <Route index element={<Home />} />
           <Route path="login" element={<Login />} />
           <Route path="signup" element={<Signup />} />
+          <Route path="checkout/success" element={<CheckoutSuccess />} />
+          <Route path="checkout/cancelled" element={<CheckoutCancelled />} />
+          <Route path="account" element={<Account />} />
           <Route path="admin" element={<RequireRole roles={['manager', 'admin']}><Admin /></RequireRole>} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>

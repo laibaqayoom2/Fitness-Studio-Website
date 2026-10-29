@@ -11,7 +11,7 @@ function BarChart({ data }) {
         const height = (Number(d.bookings) / max) * 100
         return (
           <div key={d.date} className="flex flex-1 flex-col items-center gap-2">
-            <div className="flex h-40 w-full items-end rounded-xl bg-white/5">
+            <div className="flex h-40 w-full items-end rounded-xl bg-white/5 light:bg-black/5">
               <div className="w-full rounded-t-xl bg-brand" style={{ height: `${height}%` }} />
             </div>
             <span className="text-xs text-muted">{d.date.slice(5)}</span>
@@ -30,7 +30,7 @@ export default function OverviewPanel({ onNavigate }) {
     return <p className="mt-6 text-muted">Loading dashboard...</p>
   }
   if (error && !dashboard) {
-    return <p className="mt-6 text-red-300">Could not load dashboard: {error}</p>
+    return <p className="mt-6 text-red-300 light:text-red-700">Could not load dashboard: {error}</p>
   }
   if (!dashboard) return null
 
@@ -38,7 +38,7 @@ export default function OverviewPanel({ onNavigate }) {
 
   return (
     <div className="mt-6 grid gap-6">
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
         <div className="rounded-3xl border border-line bg-gradient-to-br from-card to-panel p-6 shadow-lg shadow-black/5">
           <p className="text-sm text-muted">Total Bookings</p>
           <p className="mt-2 text-4xl font-bold"><AnimatedNumber value={totals.bookings} /></p>
@@ -59,6 +59,13 @@ export default function OverviewPanel({ onNavigate }) {
           <p className="mt-2 text-4xl font-bold"><AnimatedNumber value={totals.trainers} /> / <AnimatedNumber value={totals.plans} /></p>
           <p className="mt-1 text-sm text-muted">
             {totals.users !== null ? <><AnimatedNumber value={totals.users} /> registered users</> : 'User stats restricted'}
+          </p>
+        </div>
+        <div className="rounded-3xl border border-line bg-gradient-to-br from-card to-panel p-6 shadow-lg shadow-black/5">
+          <p className="text-sm text-muted">Payments</p>
+          <p className="mt-2 text-4xl font-bold"><AnimatedNumber value={totals.paidOrders} /></p>
+          <p className="mt-1 text-sm text-muted">
+            members paid{totals.pendingOrders > 0 ? <> · <AnimatedNumber value={totals.pendingOrders} /> pending</> : ''}
           </p>
         </div>
       </div>
