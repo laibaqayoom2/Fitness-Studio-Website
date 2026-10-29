@@ -11,6 +11,7 @@ A marketing site for FFL Studio with a class schedule, booking flow, accounts, a
 ## Features
 
 - Public class schedule with transactional booking and printable confirmation.
+- Stripe Test mode checkout for membership plans: authenticated checkout endpoint, hosted Checkout page, and a signature-verified webhook that is the only path that can mark an order `paid`.
 - Login, signup, logout, and persistent httpOnly cookie sessions.
 - Three roles:
   - **member** — public site and class booking. New signups always get this role.
@@ -20,6 +21,7 @@ A marketing site for FFL Studio with a class schedule, booking flow, accounts, a
 - Admin-created trainer accounts are automatically linked to the trainer profile and given the `manager` role.
 - Members see their own bookings in a header menu, refreshed immediately after booking.
 - Contact section with a validated enquiry form, honeypot and rate limiting. Messages are stored in PostgreSQL and managed from an admin inbox.
+- Orders and Stripe: `orders` + `order_items` tables (prices and totals are snapshotted at purchase time). Plans' "Get started" buttons open Stripe's hosted Checkout page; the success page only shows "confirmed" after the webhook verified the payment, polling the order endpoint a fixed number of times.
 - Accessible navbar dropdowns for grouped links, plus collapsible submenus on mobile.
 - Admins upload trainer photos from the dashboard; images are resized and compressed in the browser before saving.
 - Days with three or more classes switch from a grid to a swipeable slider; coaches autoplay in a carousel that pauses on hover, focus, or from the pause button.
@@ -64,19 +66,24 @@ client/
       Home.jsx            Public landing page
       Login.jsx           Login form
       Signup.jsx          Member signup form
+      CheckoutSuccess.jsx Polls the order until the webhook marks it paid
+      CheckoutCancelled.jsx Cancelled-checkout page
       Admin.jsx           Protected manager/admin dashboard
       admin/              Classes, bookings, messages, trainers, plans and users panels
     utils/image.js        Photo resize/compression and trainer image URL helper
 server/
-  index.js                Express app and API routes
+  index.js                Express app, API routes, Stripe webhook
   auth.js                 Sessions, cookie helpers, role middleware
   passwords.js            scrypt password hashing and verification
   db.js                   PostgreSQL pool
-  schema.sql              Tables + migrations (capacity, users, sessions, links)
+  schema.sql              Tables + migrations (capacity, orders, order_items)
+  migrate.js              Applies schema.sql on an existing DB without resets
+  stripe.js               Stripe client, Checkout Session creation, webhook signature
+  orders.js               Checkout validation, totals, order persistence
   seed.js                 Creates schema, clears data and seeds everything
   seed-users.js           Non-destructive schema + demo user upsert
   seed-data.js            Classes, trainers, plans and demo accounts
-  .env.example            Database + CORS + session/cookie config
+  .env.example            Database + CORS + session/cookie + Stripe keys
 ```
 
 ## Getting started
@@ -135,9 +142,60 @@ Server (`cd server`):
 ```bash
 npm run dev        # node --watch index.js
 npm start          # production start
+npm run migrate    # apply schema.sql to an existing DB without resetting data
 npm run seed       # create/migrate tables and reset all demo data
 npm run seed:users # create/migrate tables and upsert demo accounts only
+npm test           # vitest (unit tests; integration tests run with TEST_DATABASE_URL set)
 ```
+
+## Stripe checkout (Test mode)
+
+Membership plans are purchased via Stripe's hosted Checkout page. Prices,
+totals and the user id always come from the server (`plans` table + session);
+the frontend only sends `planId` and `quantity`.
+
+Security model:
+
+- `POST /api/orders/checkout` requires a signed-in session, loads the plan from
+  the database, computes `unitAmount` (cents) and the total exactly like Stripe
+  does (`unit_amount × quantity`), and creates a `pending` order.
+- `POST /api/webhooks/stripe` verifies the signature over the **raw request
+  body**; only `checkout.session.completed` (or `async_payment_succeeded`) with
+  `payment_status === 'paid'` moves an order to `paid`. Transitions apply only
+  to orders still `pending`, so duplicate deliveries are idempotent, and a
+  redirect to `/checkout/success` alone is never treated as payment proof.
+- `GET /api/orders/:id` is scoped to the signed-in owner; someone else's order
+  behaves exactly like an unknown one (404).
+
+Server env:
+
+```bash
+STRIPE_SECRET_KEY=sk_test_...        # Test mode secret key (server only — never exposed to React)
+STRIPE_WEBHOOK_SECRET=whsec_...      # from `stripe listen` (local) or the Dashboard webhook endpoint
+```
+
+Note: Stripe does not currently support businesses registered in Pakistan, so
+this integration targets **Test mode for local development only**. Test keys
+are free, safe, and never move real money.
+
+### Testing the full flow locally
+
+1. Sign in as the demo member at http://localhost:5173/login (`member@ffl.com` / `Member123!`).
+2. In **Membership plans**, pick a plan's **Get started** button → you land on Stripe's hosted Checkout (Test mode).
+3. Pay with the test card `4242 4242 4242 4242`, any future expiry, any CVC (including `4242 4242 4242 4242` variants of decline:
+   `4000 0002`... — see Stripe docs for decline cards).
+4. The success page polls `GET /api/orders/:id` (max 10 × 3 s) until the webhook marks the order `paid`.
+
+Webhook forwarding:
+
+```bash
+brew install stripe/stripe-cli/stripe   # or: scoop install stripe (Windows)
+stripe login
+stripe listen --forward-to localhost:3000/api/webhooks/stripe
+```
+
+`stripe listen` prints the `whsec_...` to put in `server/.env`. Re-run events
+after a restart with `stripe trigger checkout.session.completed`.
 
 ## Auth and roles
 
@@ -157,7 +215,14 @@ CLIENT_ORIGIN=http://localhost:5173,http://localhost:4173
 PORT=3000
 SESSION_TTL_DAYS=7
 COOKIE_SAMESITE=lax
+STRIPE_SECRET_KEY=sk_test_...
+STRIPE_WEBHOOK_SECRET=whsec_...
 ```
+
+`STRIPE_*` keys are optional: without them the site runs normally and the
+checkout endpoint answers `503` with a clear message. Both keys are Test mode
+values and never reach the React client — payments happen entirely on Stripe's
+hosted page.
 
 `COOKIE_SAMESITE` is `lax` by default for same-origin deployments. For a split-origin deployment, set it to `none` and serve both sites over HTTPS; the cookie is then marked `secure` automatically.
 
@@ -183,6 +248,13 @@ Auth routes:
 | POST | `/api/auth/logout` | Delete the current session |
 | GET | `/api/auth/me` | Return the current user, or `null` |
 
+Checkout / orders routes:
+
+| Method | Path | Role | Description |
+| --- | --- | --- | --- |
+| POST | `/api/orders/checkout` | member+ | Validate plan/quantity server-side, create a `pending` order, create a Stripe Checkout Session, return `checkoutUrl` |
+| GET | `/api/orders/:id` | member+ (owner) | Order status for polling; other users' orders return 404 |
+| POST | `/api/webhooks/stripe` | Stripe (signature-verified) | Mark orders `paid`/`canceled`; idempotent |
 Manager/admin routes (session required):
 
 | Method | Path | Role | Description |
