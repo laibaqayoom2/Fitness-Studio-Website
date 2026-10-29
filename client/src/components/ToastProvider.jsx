@@ -25,10 +25,10 @@ export function ToastProvider({ children }) {
             key={toast.id}
             className={`rounded-xl border px-4 py-2.5 text-sm shadow-lg ${
               toast.type === 'error'
-                ? 'border-red-400/40 bg-red-500/10 text-red-200'
+                ? 'border-red-400/40 bg-red-500/10 text-red-200 light:text-red-700'
                 : toast.type === 'success'
-                  ? 'border-green-400/30 bg-green-500/10 text-green-200'
-                  : 'border-line bg-card text-white'
+                  ? 'border-green-400/30 bg-green-500/10 text-green-200 light:text-green-700'
+                  : 'border-line bg-card text-white light:text-gray-900'
             }`}
           >
             {toast.message}

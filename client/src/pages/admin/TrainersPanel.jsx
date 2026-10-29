@@ -179,7 +179,7 @@ export default function TrainersPanel() {
               />
             </div>
             {processingPhoto && <span className="text-[0.72rem] font-normal text-muted">Processing photo...</span>}
-            {photoError && <span role="alert" className="text-[0.72rem] font-normal text-red-300">{photoError}</span>}
+            {photoError && <span role="alert" className="text-[0.72rem] font-normal text-red-300 light:text-red-700">{photoError}</span>}
           </Field>
           <Field label="Bio">
             <textarea required rows="3" value={form.bio} onChange={update('bio')} className={inputClass} placeholder="A short introduction for the team section." />
@@ -187,7 +187,7 @@ export default function TrainersPanel() {
 
           {!editingId && (
             <div className="sm:col-span-2 rounded-2xl border border-line bg-ink/30 p-4">
-              <p className="text-[0.8rem] font-semibold text-white">Manager login (optional)</p>
+              <p className="text-[0.8rem] font-semibold text-white light:text-gray-900">Manager login (optional)</p>
               <p className="mt-1 text-[0.75rem] text-muted">
                 Leave both fields blank for a profile-only trainer. If you add login details, the account gets the manager role.
               </p>
@@ -212,7 +212,7 @@ export default function TrainersPanel() {
         <Notice error={formError} success={success} />
       </div>
 
-      {error && <p role="alert" className="mt-5 text-[0.85rem] text-red-300">Could not load trainers: {error}</p>}
+      {error && <p role="alert" className="mt-5 text-[0.85rem] text-red-300 light:text-red-700">Could not load trainers: {error}</p>}
       {loading && !data && <p className="mt-5 text-[0.85rem] text-muted">Loading trainers...</p>}
       {!loading && !error && trainers.length === 0 && <Empty>No trainers yet. Add the first one above.</Empty>}
 
@@ -228,7 +228,7 @@ export default function TrainersPanel() {
                     className="size-10 flex-none rounded-full border border-line object-cover"
                   />
                   <div>
-                    <p className="font-semibold text-white">{trainer.name}</p>
+                    <p className="font-semibold text-white light:text-gray-900">{trainer.name}</p>
                     <p className="mt-0.5 max-w-[38ch] text-[0.75rem] text-muted">{trainer.bio}</p>
                   </div>
                 </div>
@@ -236,7 +236,7 @@ export default function TrainersPanel() {
               <Td>{trainer.role}</Td>
               <Td>
                 {trainer.has_account
-                  ? <span className="rounded-full bg-green-500/15 px-2.5 py-1 text-[0.7rem] font-semibold text-green-300">Linked</span>
+                  ? <span className="rounded-full bg-green-500/15 px-2.5 py-1 text-[0.7rem] font-semibold text-green-300 light:text-green-700">Linked</span>
                   : <span className="text-[0.75rem] text-muted">None</span>}
               </Td>
               <Td>

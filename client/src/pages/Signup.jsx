@@ -99,7 +99,7 @@ export default function Signup() {
           />
         </label>
 
-        {error && <p role="alert" className="text-[0.85rem] text-red-300">{error}</p>}
+        {error && <p role="alert" className="text-[0.85rem] text-red-300 light:text-red-700">{error}</p>}
 
         <button type="submit" disabled={submitting} className="btn mt-1 px-6 py-3 text-[0.9rem] disabled:opacity-50">
           {submitting ? 'Creating account...' : 'Create account'}

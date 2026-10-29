@@ -103,7 +103,7 @@ export default function BookingsPanel() {
               className={inputClass}
             />
             {filtered.length > 0 && (
-              <button type="button" onClick={() => downloadCSV(filtered)} className="rounded-full border border-line px-4 py-2 text-sm text-white">
+              <button type="button" onClick={() => downloadCSV(filtered)} className="rounded-full border border-line px-4 py-2 text-sm text-white light:text-gray-900">
                 Export CSV
               </button>
             )}
@@ -143,7 +143,7 @@ export default function BookingsPanel() {
         <Notice error={formError} success={success} />
       </div>
 
-      {error && <p role="alert" className="mt-5 text-[0.85rem] text-red-300">Could not load bookings: {error}</p>}
+      {error && <p role="alert" className="mt-5 text-[0.85rem] text-red-300 light:text-red-700">Could not load bookings: {error}</p>}
       {loading && !data && <p className="mt-5 text-[0.85rem] text-muted">Loading bookings...</p>}
       {!loading && !error && bookings.length === 0 && <Empty>No bookings yet.</Empty>}
       {!loading && !error && bookings.length > 0 && filtered.length === 0 && <Empty>No bookings match your search.</Empty>}
@@ -152,21 +152,21 @@ export default function BookingsPanel() {
         <Table columns={['Reference', 'Guest', 'Classes', 'Spots', 'Created', 'Actions']} minWidth="56rem">
           {filtered.map((booking) => (
             <tr key={booking.id}>
-              <Td className="whitespace-nowrap font-mono font-semibold text-white">{booking.reference}</Td>
+              <Td className="whitespace-nowrap font-mono font-semibold text-white light:text-gray-900">{booking.reference}</Td>
               <Td>
-                <p className="font-semibold text-white">{booking.name}</p>
+                <p className="font-semibold text-white light:text-gray-900">{booking.name}</p>
                 <p className="mt-0.5 text-[0.75rem] text-muted">{booking.email}</p>
               </Td>
               <Td>
                 <ul className="grid gap-1">
                   {booking.items.map((item) => (
                     <li key={item.classId} className="whitespace-nowrap">
-                      {item.day} {item.time} · {item.name} <span className="text-white">× {item.spots}</span>
+                      {item.day} {item.time} · {item.name} <span className="text-white light:text-gray-900">× {item.spots}</span>
                     </li>
                   ))}
                 </ul>
               </Td>
-              <Td className="font-semibold text-white">{booking.total_spots}</Td>
+              <Td className="font-semibold text-white light:text-gray-900">{booking.total_spots}</Td>
               <Td className="whitespace-nowrap">{new Date(booking.created_at).toLocaleString()}</Td>
               <Td>
                 <button type="button" onClick={() => remove(booking)} className={dangerButton}>Cancel</button>

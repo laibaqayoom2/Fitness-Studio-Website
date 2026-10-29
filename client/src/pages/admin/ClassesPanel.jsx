@@ -198,7 +198,7 @@ export default function ClassesPanel() {
         <Notice error={formError} success={success} />
       </div>
 
-      {error && <p role="alert" className="mt-5 text-[0.85rem] text-red-300">Could not load classes: {error}</p>}
+      {error && <p role="alert" className="mt-5 text-[0.85rem] text-red-300 light:text-red-700">Could not load classes: {error}</p>}
       {loading && !data && <p className="mt-5 text-[0.85rem] text-muted">Loading classes...</p>}
       {!loading && !error && classes.length === 0 && <Empty>No classes yet. Add the first one above.</Empty>}
       {!loading && !error && classes.length > 0 && filtered.length === 0 && <Empty>No classes match your filters.</Empty>}
@@ -207,8 +207,8 @@ export default function ClassesPanel() {
         <Table columns={['When', 'Class', 'Coach', 'Category', 'Spots', 'Actions']}>
           {filtered.map((c) => (
             <tr key={c.id}>
-              <Td className="whitespace-nowrap font-semibold text-white">{c.day} {c.time}</Td>
-              <Td className="font-semibold text-white">{c.name}</Td>
+              <Td className="whitespace-nowrap font-semibold text-white light:text-gray-900">{c.day} {c.time}</Td>
+              <Td className="font-semibold text-white light:text-gray-900">{c.name}</Td>
               <Td>{c.coach}</Td>
               <Td>{c.category}</Td>
               <Td>{c.spots} / {c.capacity}</Td>

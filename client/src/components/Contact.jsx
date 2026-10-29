@@ -14,7 +14,7 @@ const emptyForm = {
   website: '',
 }
 
-const fieldClass = 'w-full rounded-xl border border-line bg-ink/60 px-4 py-2.5 text-[0.85rem] text-white placeholder:text-muted focus:border-brand focus:outline-none'
+const fieldClass = 'w-full rounded-xl border border-line bg-ink/60 px-4 py-2.5 text-[0.85rem] text-white placeholder:text-muted focus:border-brand focus:outline-none light:bg-white light:text-gray-900'
 const labelClass = 'grid gap-1.5 text-[0.78rem] font-semibold text-soft'
 
 export default function Contact() {
@@ -82,8 +82,8 @@ function ContactForm({ user }) {
             <div className="rounded-3xl bg-card p-5">
               <h3 className="text-[0.8rem] font-semibold uppercase tracking-[0.06em] text-brand">Talk to us</h3>
               <ul className="mt-2 grid gap-1 text-[0.85rem]">
-                <li><a className="transition hover:text-white" href="tel:+10000000000">+1 000 000 0000</a></li>
-                <li><a className="break-words transition hover:text-white" href="mailto:hello@ffl.com">hello@ffl.com</a></li>
+                <li><a className="transition hover:text-white light:hover:text-gray-900" href="tel:+10000000000">+1 000 000 0000</a></li>
+                <li><a className="break-words transition hover:text-white light:hover:text-gray-900" href="mailto:hello@ffl.com">hello@ffl.com</a></li>
               </ul>
             </div>
           </div>
@@ -98,7 +98,7 @@ function ContactForm({ user }) {
           <ul aria-label="Social media" className="flex flex-wrap gap-x-5 gap-y-2 text-[0.85rem]">
             {SOCIAL.map((s) => (
               <li key={s.label}>
-                <a className="text-muted transition hover:text-white" href={s.href} target="_blank" rel="noreferrer noopener">
+                <a className="text-muted transition hover:text-white light:hover:text-gray-900" href={s.href} target="_blank" rel="noreferrer noopener">
                   {s.label}
                 </a>
               </li>
@@ -115,13 +115,13 @@ function ContactForm({ user }) {
                 </svg>
               </span>
               <div>
-                <h3 className="text-[1.25rem] font-bold text-white">Message sent</h3>
+                <h3 className="text-[1.25rem] font-bold text-white light:text-gray-900">Message sent</h3>
                 <p className="mt-1 text-[0.9rem] text-muted">
                   Thanks {result?.name?.split(' ')[0] || 'for reaching out'} &mdash; we&apos;ll be in touch within one working day.
                 </p>
                 {result?.reference && (
                   <p className="mt-3 text-[0.78rem] text-muted">
-                    Your reference: <span className="font-mono font-semibold text-white">{result.reference}</span>
+                    Your reference: <span className="font-mono font-semibold text-white light:text-gray-900">{result.reference}</span>
                   </p>
                 )}
               </div>
@@ -131,7 +131,7 @@ function ContactForm({ user }) {
                   setResult(null)
                   setStatus('idle')
                 }}
-                className="w-fit rounded-full border border-line px-4 py-2 text-[0.85rem] text-white transition hover:border-brand"
+                className="w-fit rounded-full border border-line px-4 py-2 text-[0.85rem] text-white transition hover:border-brand light:text-gray-900"
               >
                 Send another message
               </button>
@@ -180,7 +180,7 @@ function ContactForm({ user }) {
               </div>
 
               <div aria-live="polite">
-                {error && <p role="alert" className="mb-3 rounded-xl border border-red-400/40 bg-red-500/10 px-4 py-2.5 text-[0.85rem] text-red-200">{error}</p>}
+                {error && <p role="alert" className="mb-3 rounded-xl border border-red-400/40 bg-red-500/10 px-4 py-2.5 text-[0.85rem] text-red-200 light:text-red-700">{error}</p>}
                 <button type="submit" disabled={status === 'sending'} className="btn px-6 py-3 text-[0.9rem] disabled:opacity-50">
                   {status === 'sending' ? 'Sending...' : 'Send message'}
                 </button>

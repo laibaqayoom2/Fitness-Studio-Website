@@ -2,8 +2,8 @@
 import { Link, useLocation } from 'react-router-dom'
 import { NAV, HOURS, SOCIAL } from '../data'
 
-const title = 'mb-4 text-[0.8rem] font-semibold uppercase tracking-[0.06em] text-white'
-const link = 'transition-colors hover:text-white'
+const title = 'mb-4 text-[0.8rem] font-semibold uppercase tracking-[0.06em] text-white light:text-gray-900'
+const link = 'transition-colors hover:text-white light:hover:text-gray-900'
 
 export default function Footer() {
   const { pathname } = useLocation()
@@ -15,7 +15,7 @@ export default function Footer() {
         <div>
           <Link to="/#top"><img src="/images/logo.png" alt="FFL Studio" width="412" height="165" className="h-[2.8rem] w-auto" /></Link>
           <p className="mb-5 mt-4 max-w-[28ch]">Fit For Life. Strong today. Stronger tomorrow.</p>
-          <Link to={sectionTo('#join')} className="inline-block rounded-full border border-line bg-card px-4 py-2 text-white transition-colors hover:border-brand">Start your free trial</Link>
+          <Link to={sectionTo('#join')} className="inline-block rounded-full border border-line bg-card px-4 py-2 text-white transition-colors hover:border-brand light:text-gray-900">Start your free trial</Link>
         </div>
         <nav aria-label="Footer">
           <h2 className={title}>Explore</h2>

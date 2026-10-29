@@ -67,7 +67,7 @@ export default function Trainers() {
               type="button"
               onClick={togglePaused}
               aria-pressed={userPaused}
-              className="text-[0.8rem] text-muted transition hover:text-white"
+              className="text-[0.8rem] text-muted transition hover:text-white light:hover:text-gray-900"
             >
               {userPaused ? 'Play autoplay' : 'Pause autoplay'}
             </button>

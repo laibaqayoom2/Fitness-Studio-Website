@@ -135,7 +135,7 @@ export default function PlansPanel() {
               className="mt-0.5 size-4 accent-brand"
             />
             <span>
-              <span className="font-semibold text-white">Highlight this plan</span>
+              <span className="font-semibold text-white light:text-gray-900">Highlight this plan</span>
               <span className="mt-0.5 block text-[0.75rem] text-muted">Featured plans get the emphasis styling on the landing page.</span>
             </span>
           </label>
@@ -149,7 +149,7 @@ export default function PlansPanel() {
         <Notice error={formError} success={success} />
       </div>
 
-      {error && <p role="alert" className="mt-5 text-[0.85rem] text-red-300">Could not load plans: {error}</p>}
+      {error && <p role="alert" className="mt-5 text-[0.85rem] text-red-300 light:text-red-700">Could not load plans: {error}</p>}
       {loading && !data && <p className="mt-5 text-[0.85rem] text-muted">Loading plans...</p>}
       {!loading && !error && plans.length === 0 && <Empty>No plans yet. Add the first one above.</Empty>}
 
@@ -158,10 +158,10 @@ export default function PlansPanel() {
           {plans.map((plan) => (
             <tr key={plan.id}>
               <Td>
-                <p className="font-semibold text-white">{plan.name}</p>
+                <p className="font-semibold text-white light:text-gray-900">{plan.name}</p>
                 <p className="mt-0.5 max-w-[32ch] text-[0.75rem] text-muted">{plan.note}</p>
               </Td>
-              <Td className="font-semibold text-white">${plan.price}</Td>
+              <Td className="font-semibold text-white light:text-gray-900">${plan.price}</Td>
               <Td>
                 <ul className="grid gap-0.5 text-[0.75rem]">
                   {(plan.perks ?? []).map((perk) => <li key={perk}>{perk}</li>)}

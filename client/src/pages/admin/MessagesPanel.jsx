@@ -100,7 +100,7 @@ export default function MessagesPanel() {
               className={`rounded-full px-4 py-2 text-[0.8rem] transition ${
                 filter === item.key
                   ? 'bg-brand font-semibold text-ink'
-                  : 'border border-line text-soft hover:text-white'
+                  : 'border border-line text-soft hover:text-white light:hover:text-gray-900'
               }`}
             >
               {item.label}
@@ -110,12 +110,12 @@ export default function MessagesPanel() {
       )}
 
       {actionError && (
-        <p role="alert" className="mt-4 rounded-xl border border-red-400/40 bg-red-500/10 px-4 py-2.5 text-[0.85rem] text-red-200">
+        <p role="alert" className="mt-4 rounded-xl border border-red-400/40 bg-red-500/10 px-4 py-2.5 text-[0.85rem] text-red-200 light:text-red-700">
           {actionError}
         </p>
       )}
 
-      {error && <p role="alert" className="mt-5 text-[0.85rem] text-red-300">Could not load messages: {error}</p>}
+      {error && <p role="alert" className="mt-5 text-[0.85rem] text-red-300 light:text-red-700">Could not load messages: {error}</p>}
       {loading && !data && <p className="mt-5 text-[0.85rem] text-muted">Loading messages...</p>}
       {!loading && !error && messages.length === 0 && <Empty>No contact messages yet.</Empty>}
       {!loading && !error && messages.length > 0 && shown.length === 0 && (
@@ -130,11 +130,11 @@ export default function MessagesPanel() {
                 <div className="flex items-start gap-2">
                   <span
                     aria-label={message.status === 'new' ? 'Unread' : 'Read'}
-                    className={`mt-1.5 size-2 flex-none rounded-full ${message.status === 'new' ? 'bg-brand' : 'bg-white/25'}`}
+                    className={`mt-1.5 size-2 flex-none rounded-full ${message.status === 'new' ? 'bg-brand' : 'bg-white/25 light:bg-black/25'}`}
                   />
                   <div className="min-w-0">
-                    <p className="font-semibold text-white">{message.name}</p>
-                    <a className="mt-0.5 block break-all text-[0.75rem] text-muted transition hover:text-white" href={`mailto:${message.email}`}>
+                    <p className="font-semibold text-white light:text-gray-900">{message.name}</p>
+                    <a className="mt-0.5 block break-all text-[0.75rem] text-muted transition hover:text-white light:hover:text-gray-900" href={`mailto:${message.email}`}>
                       {message.email}
                     </a>
                     {message.phone && <p className="mt-0.5 text-[0.75rem] text-muted">{message.phone}</p>}

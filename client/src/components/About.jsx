@@ -47,7 +47,7 @@ export default function About() {
               return (
                 <li
                   key={s.label}
-                  className="rounded-xl border border-[var(--border)] p-4 sm:p-5"
+                  className="rounded-xl border border-line p-4 sm:p-5"
                 >
                   <strong className="block text-2xl font-bold tracking-tight sm:text-3xl">
                     <AnimatedNumber value={stat.number} suffix={stat.suffix} />
@@ -64,7 +64,7 @@ export default function About() {
         </div>
 
         {/* Shorter, landscape video */}
-        <figure className="group relative isolate h-[260px] overflow-hidden rounded-2xl bg-[#111] sm:h-[320px] lg:h-[350px] xl:h-[380px]">
+        <figure className="group relative isolate h-[260px] overflow-hidden rounded-2xl bg-panel-alt sm:h-[320px] lg:h-[350px] xl:h-[380px]">
           <video
             autoPlay
             muted

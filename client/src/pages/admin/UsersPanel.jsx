@@ -84,7 +84,7 @@ export default function UsersPanel() {
 
       <Notice error={actionError} success={success} />
 
-      {error && <p role="alert" className="mt-5 text-[0.85rem] text-red-300">Could not load users: {error}</p>}
+      {error && <p role="alert" className="mt-5 text-[0.85rem] text-red-300 light:text-red-700">Could not load users: {error}</p>}
       {loading && !data && <p className="mt-5 text-[0.85rem] text-muted">Loading users...</p>}
       {!loading && !error && users.length === 0 && <Empty>No users yet.</Empty>}
       {!loading && !error && users.length > 0 && filtered.length === 0 && <Empty>No users match your filters.</Empty>}
@@ -98,7 +98,7 @@ export default function UsersPanel() {
             return (
               <tr key={user.id}>
                 <Td>
-                  <p className="font-semibold text-white">
+                  <p className="font-semibold text-white light:text-gray-900">
                     {user.name}
                     {isMe && <span className="ml-2 text-[0.7rem] font-semibold text-brand">(you)</span>}
                   </p>

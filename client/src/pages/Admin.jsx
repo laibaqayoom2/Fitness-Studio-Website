@@ -58,12 +58,12 @@ export default function Admin() {
           <h1 className="text-[1.6rem] font-bold">Access denied</h1>
           <p className="mt-2 text-[0.9rem] text-muted">
             Your account ({user.email}) has the{" "}
-            <strong className="text-white">{user.role}</strong> role. Only
+            <strong className="text-white light:text-gray-900">{user.role}</strong> role. Only
             managers and admins can access this dashboard.
           </p>
           <Link
             to="/"
-            className="mt-6 inline-block rounded-full border border-line px-5 py-2 text-[0.85rem] text-white transition hover:border-brand"
+            className="mt-6 inline-block rounded-full border border-line px-5 py-2 text-[0.85rem] text-white transition hover:border-brand light:text-gray-900"
           >
             Back to home
           </Link>
