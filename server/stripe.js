@@ -84,3 +84,22 @@ export function resolveCheckoutAction(event) {
   if (!paid) return { action: 'unpaid', sessionId }
   return { action: 'paid', sessionId }
 }
+
+// Re-reads a Checkout Session straight from Stripe. Used by "return to payment
+// page": the pending order's session can still be paid while it is open, and
+// if the payment settled without a webhook arrival, this call doubles as the
+// reconciliation path.
+export async function retrieveCheckoutSession(sessionId) {
+  const stripe = assertStripeConfigured()
+  return stripe.checkout.sessions.retrieve(sessionId)
+}
+
+// Pure decision for resuming a pending order from a re-read session:
+// - 'paid'    → the payment settled (mark the order paid, like the webhook)
+// - 'open'    → the hosted page is still payable; return its url
+// - 'expired' → session completed without payment, expired, or missing url
+export function resolveResumeAction(session) {
+  if (session?.payment_status === 'paid') return 'paid'
+  if (session?.status === 'open' && typeof session?.url === 'string' && session.url.length > 0) return 'open'
+  return 'expired'
+}

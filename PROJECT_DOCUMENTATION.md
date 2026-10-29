@@ -88,9 +88,15 @@ Security invariants:
   # copy printed whsec_... into server/.env (STRIPE_WEBHOOK_SECRET), restart server
   ```
 
-### Membership model shown to members
+### Membership model shown to members + resuming un-finished payments
 
 `/account` treats a paid order as a 30-day membership from `paid_at`: card shows plan, price, member-since, and the renewal date; past that date it flips to "Renewed — renew your plan →" (display-only; nothing is cancelled server-side).
+
+Orders left `pending` (checkout abandoned, or confirmation still travelling) surface as a "Payment pending" card on `/account` and as a "Return to payment page" button on `/checkout/success`. That hits `GET /api/orders/:id/checkout-url`, which re-reads the session from Stripe:
+
+* session still `open` → returns the hosted URL and the app redirects back to the payment page;
+* payment since settled (webhook missed) → the server reconciles the order with the exact webhook transition and the UI refreshes to paid;
+* session expired/abandoned-without-payment → honest "link expired, nothing was charged; pick a plan again" message.
 
 ## 6. Notifications & account (member UX)
 
@@ -130,7 +136,7 @@ Never reset data by hand: `npm run migrate` applies DDL only; `npm run seed` tru
 
 Public: `/api/classes` (GET), `/api/trainers` (GET), `/api/plans` (GET), `/api/contact` (POST, rate-limited + honeypot).
 Auth: `/api/auth/signup`, `/api/auth/login`, `/api/auth/logout`, `/api/auth/me`.
-Member (auth): `POST /api/bookings`, `GET /api/bookings/mine`, `POST /api/orders/checkout`, `GET /api/orders/mine`, `GET /api/orders/:id` (owner-scoped).
+Member (auth): `POST /api/bookings`, `GET /api/bookings/mine`, `POST /api/orders/checkout`, `GET /api/orders/mine`, `GET /api/orders/:id` (owner-scoped), `GET /api/orders/:id/checkout-url` (resume pending payment / webhook-failure reconciliation).
 Staff (manager+/admin): `/api/classes` (POST/PUT/DELETE), `/api/bookings` admin list, `/api/contact` (PATCH/DELETE), `/api/trainers` (POST/PUT/DELETE), `/api/plans` (POST/PUT/DELETE), `/api/users` (list/PATCH role/DELETE), `/api/dashboard`.
 Stripe: `POST /api/webhooks/stripe` (signature-verified; raw body).
 

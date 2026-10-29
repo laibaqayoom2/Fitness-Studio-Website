@@ -17,7 +17,29 @@ export default function CheckoutSuccess() {
   const orderId = params.get('orderId')
   const { user, loading: authLoading } = useAuth()
   const [state, setState] = useState({ phase: 'verifying', order: null, error: null })
+  const [resume, setResume] = useState({ busy: false, expired: false })
   const attemptsRef = useRef(0)
+
+  // Lets the member go back to Stripe's hosted page for a still-open session.
+  // If Stripe meanwhile reports the payment settled, the server reconciles the
+  // order and the page reloads into the paid state.
+  const returnToPayment = async () => {
+    setResume({ busy: true, expired: false })
+    try {
+      const data = await apiGet(`/api/orders/${orderId}/checkout-url`)
+      if (data.status === 'open' && data.checkoutUrl) {
+        window.location.assign(data.checkoutUrl)
+        return
+      }
+      if (data.status === 'paid') {
+        window.location.reload()
+        return
+      }
+      setResume({ busy: false, expired: true })
+    } catch {
+      setResume({ busy: false, expired: true })
+    }
+  }
 
   useEffect(() => {
     if (authLoading || !user || !orderId) return
@@ -110,10 +132,20 @@ export default function CheckoutSuccess() {
         {state.phase === 'pending' && (
           <>
             <p role="status" className="text-soft">
-              Your payment confirmation is still arriving from Stripe. It usually only takes a moment — try refreshing
-              shortly.
+              Your payment confirmation is still arriving from Stripe. It usually only takes a moment.
             </p>
-            <Link to="/" className="btn mt-6 inline-block">Back to home</Link>
+            <div className="mt-4 flex flex-wrap items-center gap-3">
+              <button type="button" onClick={returnToPayment} disabled={resume.busy} className="btn px-5 py-2 text-[0.85rem] disabled:opacity-50">
+                {resume.busy ? 'Checking…' : 'Return to payment page'}
+              </button>
+              <Link to="/" className="text-[0.85rem] text-brand transition hover:opacity-80">Back to home</Link>
+            </div>
+            {resume.expired && (
+              <p className="mt-3 text-[0.85rem] text-red-300 light:text-red-700">
+                This checkout link has expired. Choose a plan again on the{' '}
+                <Link to="/#membership" className="text-brand">membership page</Link>.
+              </p>
+            )}
           </>
         )}
 

@@ -128,6 +128,7 @@ export async function getOrderForUser(orderId, userId) {
     id: order.id,
     reference: order.reference,
     status: order.status,
+    stripeSessionId: order.stripe_session_id,
     amountTotal: order.amount_total,
     currency: order.currency,
     createdAt: order.created_at,

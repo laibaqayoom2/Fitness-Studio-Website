@@ -1,6 +1,6 @@
 import crypto from 'node:crypto'
 import { afterEach, describe, expect, it } from 'vitest'
-import { constructWebhookEvent, resolveCheckoutAction } from './stripe.js'
+import { constructWebhookEvent, resolveCheckoutAction, resolveResumeAction } from './stripe.js'
 import { env } from './config.js'
 
 const secret = env.STRIPE_WEBHOOK_SECRET
@@ -38,6 +38,29 @@ describe('constructWebhookEvent signature verification', () => {
   it('rejects a missing signature header', () => {
     const payload = Buffer.from(JSON.stringify(completedEvent))
     expect(() => constructWebhookEvent(payload, undefined)).toThrow()
+  })
+})
+
+describe('resolveResumeAction (return to payment page)', () => {
+  it('resumes an open session by returning its hosted url', () => {
+    const session = { id: 'cs_test_123', status: 'open', payment_status: 'no_payment_required', url: 'https://checkout.stripe.com/c/pay/cs_test_123' }
+    expect(resolveResumeAction(session)).toBe('open')
+  })
+
+  it('reconciles a pending order whose payment actually settled', () => {
+    const session = { id: 'cs_test_123', status: 'complete', payment_status: 'paid' }
+    expect(resolveResumeAction(session)).toBe('paid')
+  })
+
+  it('treats a session completed with unpaid money as expired', () => {
+    const session = { id: 'cs_test_123', status: 'complete', payment_status: 'unpaid' }
+    expect(resolveResumeAction(session)).toBe('expired')
+  })
+
+  it('treats an expired or url-less session as expired', () => {
+    expect(resolveResumeAction({ id: 'cs', status: 'expired', payment_status: 'unpaid', url: 'https://x' })).toBe('expired')
+    expect(resolveResumeAction({ id: 'cs', status: 'open', payment_status: 'unpaid', url: '' })).toBe('expired')
+    expect(resolveResumeAction(null)).toBe('expired')
   })
 })
 

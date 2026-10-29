@@ -11,7 +11,7 @@ import pool from './db.js'
 import { attachUser, createSession, destroySession, requireAuth, requireRole } from './auth.js'
 import { hashPassword, verifyPassword } from './passwords.js'
 import { env } from './config.js'
-import { getStripeClient, createCheckoutSession, constructWebhookEvent, resolveCheckoutAction } from './stripe.js'
+import { getStripeClient, createCheckoutSession, constructWebhookEvent, resolveCheckoutAction, retrieveCheckoutSession, resolveResumeAction } from './stripe.js'
 import {
   parseCheckoutInput,
   createOrder,
@@ -835,6 +835,38 @@ app.get('/api/orders/:id', requireAuth, async (req, res) => {
   const order = await getOrderForUser(id, req.user.id)
   if (!order) return res.status(404).json({ error: 'Order not found.' })
   res.json(order)
+})
+
+// "Return to payment page" for a still-pending order. Owner-scoped like the
+// status route. If Stripe reports the payment settled (e.g. the webhook never
+// arrived), it reconciles the order here — the exact transition the webhook
+// would have performed. Open sessions get their hosted URL back; sessions
+// already completed without payment, expired, or unknown read as 'expired'.
+app.get('/api/orders/:id/checkout-url', requireAuth, async (req, res) => {
+  const id = positiveId(req.params.id)
+  if (!id) return res.status(400).json({ error: 'Invalid order id.' })
+
+  const order = await getOrderForUser(id, req.user.id)
+  if (!order) return res.status(404).json({ error: 'Order not found.' })
+  if (order.status === 'paid') return res.json({ status: 'paid' })
+  if (order.status === 'canceled' || !order.stripeSessionId) {
+    return res.json({ status: 'expired' })
+  }
+
+  try {
+    const session = await retrieveCheckoutSession(order.stripeSessionId)
+    const outcome = resolveResumeAction(session)
+    if (outcome === 'paid') await markOrderPaid(order.stripeSessionId)
+    if (outcome === 'open') {
+      res.json({ status: 'open', checkoutUrl: session.url })
+    } else {
+      res.json({ status: outcome })
+    }
+  } catch (err) {
+    // Unknown/old session id or Stripe misconfiguration: no page to return to.
+    console.error('Could not resume checkout session:', err.message)
+    res.json({ status: 'expired' })
+  }
 })
 
 // Stripe webhook. Reads the raw request body and verifies the signature before

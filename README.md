@@ -254,6 +254,7 @@ Checkout / orders routes:
 | --- | --- | --- | --- |
 | POST | `/api/orders/checkout` | member+ | Validate plan/quantity server-side, create a `pending` order, create a Stripe Checkout Session, return `checkoutUrl` |
 | GET | `/api/orders/:id` | member+ (owner) | Order status for polling; other users' orders return 404 |
+| GET | `/api/orders/:id/checkout-url` | member+ (owner) | Resume the Stripe hosted page for a pending order; reconciles if Stripe reports the payment settled |
 | POST | `/api/webhooks/stripe` | Stripe (signature-verified) | Mark orders `paid`/`canceled`; idempotent |
 Manager/admin routes (session required):
 
