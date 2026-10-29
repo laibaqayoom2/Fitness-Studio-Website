@@ -31,7 +31,7 @@ export const PLANS = [
     perks: ['Unlimited access to the gym', '1 free group class per month', 'Free access to relaxation areas'] },
   { id: 2, name: 'Standard', price: 35, note: 'Extended package for comprehensive training.', featured: true, button: 'primary',
     perks: ['Unlimited access to the gym', '3 free group classes per month', 'Free access to relaxation areas and sauna'] },
-  { id: 3, name: 'Premium', price: 45, note: 'Deluxe package with maximum benefits.', featured: false, button: 'light',
+  { id: 3, name: 'Premium', price: 45, note: 'Deluxe package with maximum benefits.', featured: false, button: 'dark',
     perks: ['Unlimited access to the gym', 'Unlimited group classes', '2 personal training sessions per month',
       'Free access to relaxation areas, sauna, and pool'] },
 ]
