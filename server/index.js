@@ -11,12 +11,21 @@ import pool from './db.js'
 import { attachUser, createSession, destroySession, requireAuth, requireRole } from './auth.js'
 import { hashPassword, verifyPassword } from './passwords.js'
 import { env } from './config.js'
+import { getStripeClient, createCheckoutSession, constructWebhookEvent, resolveCheckoutAction } from './stripe.js'
+import {
+  parseCheckoutInput,
+  createOrder,
+  markOrderPaid,
+  markOrderCanceled,
+  getOrderForUser,
+} from './orders.js'
 
 const app = express()
 const port = env.PORT
 const allowedOrigins = Array.isArray(env.CLIENT_ORIGIN)
   ? env.CLIENT_ORIGIN
   : String(env.CLIENT_ORIGIN).split(',').map((s) => s.trim()).filter(Boolean)
+const clientOrigin = allowedOrigins[0] || 'http://localhost:5173'
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 const ROLES = ['member', 'manager', 'admin']
@@ -28,6 +37,9 @@ const CONTACT_STATUSES = ['new', 'read']
 // Trainer photos arrive as compressed data URLs; every other route stays small.
 const jsonSmall = express.json({ limit: '100kb' })
 const jsonPhoto = express.json({ limit: '4mb' })
+// Stripe signs the webhook payload over the exact bytes it sent, so this route
+// needs the raw body instead of a parsed JSON body.
+const webhooksRaw = express.raw({ type: 'application/json' })
 
 app.set('trust proxy', 1)
 app.use(helmet())
@@ -42,6 +54,7 @@ const authLimiter = rateLimit({
 app.use('/api/auth/login', authLimiter)
 app.use('/api/auth/signup', authLimiter)
 app.use((req, res, next) => {
+  if (req.path.startsWith('/api/webhooks')) return webhooksRaw(req, res, next)
   const parser = req.method !== 'GET' && req.path.startsWith('/api/trainers') ? jsonPhoto : jsonSmall
   parser(req, res, next)
 })
@@ -320,6 +333,7 @@ app.get('/api/dashboard', requireRole(...EDIT_ROLES), async (req, res) => {
     recentResult,
     topClassResult,
     todayResult,
+    orderResult,
   ] = await Promise.all([
     pool.query(`
       SELECT COUNT(*)::int AS classes,
@@ -378,6 +392,11 @@ app.get('/api/dashboard', requireRole(...EDIT_ROLES), async (req, res) => {
       WHERE day = to_char(current_date, 'Dy')
       ORDER BY time
       LIMIT 8`),
+    pool.query(`
+      SELECT COUNT(*) FILTER (WHERE status = 'paid')::int AS paid_orders,
+             COUNT(*) FILTER (WHERE status = 'pending')::int AS pending_orders,
+             COALESCE(SUM(amount_total) FILTER (WHERE status = 'paid'), 0)::int AS paid_amount
+      FROM orders`),
   ])
 
   const classStats = classResult.rows[0]
@@ -405,6 +424,9 @@ app.get('/api/dashboard', requireRole(...EDIT_ROLES), async (req, res) => {
       managers: userStats.managers ?? null,
       admins: userStats.admins ?? null,
       unreadMessages: messageStats.unread ?? null,
+      paidOrders: orderResult.rows[0].paid_orders,
+      pendingOrders: orderResult.rows[0].pending_orders,
+      paidRevenue: orderResult.rows[0].paid_amount,
     },
     trend: trendResult.rows,
     recentBookings: recentResult.rows,
@@ -735,6 +757,116 @@ app.delete('/api/bookings/:id', requireRole(...EDIT_ROLES), async (req, res) => 
   } finally {
     client.release()
   }
+})
+
+// ---------- Orders and Stripe (Test mode) ----------
+
+// A member's own orders: powers the account page and the notifications
+// dropdown. Newest first, each with its snapshotted line items.
+app.get('/api/orders/mine', requireAuth, async (req, res) => {
+  const { rows } = await pool.query(`
+    SELECT o.id, o.reference, o.status, o.amount_total, o.currency,
+           o.created_at, o.paid_at,
+           json_agg(json_build_object(
+             'planId', i.plan_id, 'planName', i.plan_name,
+             'quantity', i.quantity, 'unitAmount', i.unit_amount
+           ) ORDER BY i.id) AS items
+    FROM orders o
+    JOIN order_items i ON i.order_id = o.id
+    WHERE o.user_id = $1
+    GROUP BY o.id
+    ORDER BY o.created_at DESC, o.id DESC`, [req.user.id])
+
+  res.json(rows.map((row) => ({
+    id: row.id,
+    reference: row.reference,
+    status: row.status,
+    amountTotal: row.amount_total,
+    currency: row.currency,
+    createdAt: row.created_at,
+    paidAt: row.paid_at,
+    items: row.items,
+  })))
+})
+
+// Creates a pending order from the database price and opens Stripe's hosted
+// Checkout page. Signed in users only; the user id always comes from the
+// session, and prices/totals always come from the plans table.
+app.post('/api/orders/checkout', requireAuth, async (req, res) => {
+  if (!getStripeClient()) {
+    return res.status(503).json({ error: 'Online payments are not configured yet. Add STRIPE_SECRET_KEY to server/.env and restart.' })
+  }
+
+  const parsed = parseCheckoutInput(req.body)
+  if (parsed.error) return res.status(400).json({ error: parsed.error })
+
+  const { planId, quantity } = parsed.value
+  const { rows: [plan] } = await pool.query(
+    'SELECT id, name, price, note FROM plans WHERE id = $1', [planId])
+  if (!plan) return res.status(404).json({ error: 'That plan is no longer available.' })
+
+  const order = await createOrder({ userId: req.user.id, plan, quantity })
+
+  try {
+    const session = await createCheckoutSession({ order, item: order.items[0], origin: clientOrigin })
+    await pool.query('UPDATE orders SET stripe_session_id = $1 WHERE id = $2', [session.id, order.id])
+    res.status(201).json({
+      orderId: order.id,
+      reference: order.reference,
+      status: 'pending',
+      amountTotal: order.amount_total,
+      currency: order.currency,
+      checkoutUrl: session.url,
+    })
+  } catch (err) {
+    // No Checkout Session means no order: drop the pending row so a retry
+    // starts clean and no ghost order lingers without a Stripe session.
+    await pool.query('DELETE FROM orders WHERE id = $1 AND status = $2', [order.id, 'pending'])
+    throw err
+  }
+})
+
+// A member's own order status. Ownership is enforced in the query itself, so
+// another user's order id behaves exactly like an unknown one.
+app.get('/api/orders/:id', requireAuth, async (req, res) => {
+  const id = positiveId(req.params.id)
+  if (!id) return res.status(400).json({ error: 'Invalid order id.' })
+
+  const order = await getOrderForUser(id, req.user.id)
+  if (!order) return res.status(404).json({ error: 'Order not found.' })
+  res.json(order)
+})
+
+// Stripe webhook. Reads the raw request body and verifies the signature before
+// touching anything. Orders become `paid` only from here — never because a
+// browser was redirected to the success page. Duplicate deliveries are
+// harmless: the transitions only apply to orders still `pending`.
+app.post('/api/webhooks/stripe', async (req, res) => {
+  const signature = req.headers['stripe-signature']
+  if (!signature) return res.status(400).json({ error: 'Missing Stripe signature.' })
+
+  let event
+  try {
+    event = constructWebhookEvent(req.body, signature)
+  } catch (err) {
+    console.error('Stripe webhook signature verification failed:', err.message)
+    return res.status(400).json({ error: 'Invalid Stripe signature.' })
+  }
+
+  const { action, sessionId } = resolveCheckoutAction(event)
+
+  if (action === 'paid' && sessionId) {
+    const order = await markOrderPaid(sessionId)
+    if (order) console.log(`Order ${order.id} marked paid (Stripe event ${event.id}).`)
+    // A null here means the order was already paid or does not exist; either
+    // way the event is acknowledged so Stripe will not keep retrying it.
+  } else if (action === 'canceled' && sessionId) {
+    await markOrderCanceled(sessionId)
+  } else if (action === 'unpaid') {
+    console.log(`Stripe event ${event.id} arrived without a settled payment; nothing was updated.`)
+  }
+
+  res.json({ received: true })
 })
 
 // ---------- Users (admin) ----------
