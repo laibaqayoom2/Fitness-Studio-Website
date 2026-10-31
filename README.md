@@ -161,9 +161,11 @@ Security model:
   does (`unit_amount × quantity`), and creates a `pending` order.
 - `POST /api/webhooks/stripe` verifies the signature over the **raw request
   body**; only `checkout.session.completed` (or `async_payment_succeeded`) with
-  `payment_status === 'paid'` moves an order to `paid`. Transitions apply only
-  to orders still `pending`, so duplicate deliveries are idempotent, and a
-  redirect to `/checkout/success` alone is never treated as payment proof.
+  `payment_status === 'paid'` moves an order to `paid`. Transitions apply to
+  orders still `pending` and — deliberately — to ones canceled as superseded
+  (a real payment on the old page must still be recorded), so duplicate
+  deliveries stay idempotent, and a redirect to `/checkout/success` alone is
+  never treated as payment proof.
 - `GET /api/orders/:id` is scoped to the signed-in owner; someone else's order
   behaves exactly like an unknown one (404).
 
@@ -255,6 +257,9 @@ Checkout / orders routes:
 | POST | `/api/orders/checkout` | member+ | Validate plan/quantity server-side, create a `pending` order, create a Stripe Checkout Session, return `checkoutUrl` |
 | GET | `/api/orders/:id` | member+ (owner) | Order status for polling; other users' orders return 404 |
 | GET | `/api/orders/:id/checkout-url` | member+ (owner) | Resume the Stripe hosted page for a pending order; reconciles if Stripe reports the payment settled |
+| GET | `/api/orders/admin` | admin | Full order ledger (newest 200) with member names/emails |
+| POST | `/api/orders/:id/cancel` | admin | `pending → canceled` (abandon checkout) or `paid → canceled` (revoke membership; no money moves) |
+| POST | `/api/orders/:id/refund` | admin | Refund the full amount through Stripe; order becomes `refunded` and the membership is revoked (409 if not refundable, 502 on Stripe failure) |
 | POST | `/api/webhooks/stripe` | Stripe (signature-verified) | Mark orders `paid`/`canceled`; idempotent |
 Manager/admin routes (session required):
 

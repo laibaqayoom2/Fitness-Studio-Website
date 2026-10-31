@@ -11,7 +11,7 @@ import pool from './db.js'
 import { attachUser, createSession, destroySession, requireAuth, requireRole } from './auth.js'
 import { hashPassword, verifyPassword } from './passwords.js'
 import { env } from './config.js'
-import { getStripeClient, createCheckoutSession, constructWebhookEvent, resolveCheckoutAction, retrieveCheckoutSession, resolveResumeAction } from './stripe.js'
+import { getStripeClient, createCheckoutSession, constructWebhookEvent, resolveCheckoutAction, retrieveCheckoutSession, resolveResumeAction, refundCheckoutSession } from './stripe.js'
 import {
   parseCheckoutInput,
   createOrder,
@@ -790,11 +790,84 @@ app.get('/api/orders/mine', requireAuth, async (req, res) => {
   })))
 })
 
+// ---------- Orders (admin) ----------
+
+// Full order ledger for the admin Orders panel: newest 200 with the member's
+// name and email joined in.
+app.get('/api/orders/admin', requireRole('admin'), async (req, res) => {
+  const { rows } = await pool.query(`
+    SELECT o.id, o.reference, o.status, o.amount_total, o.currency,
+           o.created_at, o.paid_at, u.name AS user_name, u.email AS user_email,
+           json_agg(json_build_object(
+             'planName', i.plan_name, 'quantity', i.quantity, 'unitAmount', i.unit_amount
+           ) ORDER BY i.id) AS items
+    FROM orders o
+    JOIN users u ON u.id = o.user_id
+    JOIN order_items i ON i.order_id = o.id
+    GROUP BY o.id, u.name, u.email
+    ORDER BY o.created_at DESC, o.id DESC
+    LIMIT 200`)
+
+  res.json(rows.map((row) => ({
+    id: row.id,
+    reference: row.reference,
+    status: row.status,
+    amountTotal: row.amount_total,
+    currency: row.currency,
+    createdAt: row.created_at,
+    paidAt: row.paid_at,
+    userName: row.user_name,
+    userEmail: row.user_email,
+    items: row.items,
+  })))
+})
+
+// Admin actions for one order. Cancel applies to a pending checkout (abandon
+// it) or a paid membership (revoke it outright, without touching money — a
+// refund is the separate action). Refund only applies to settled payments:
+// the full amount goes back via Stripe, the order is marked refunded, and the
+// membership no longer counts as active.
+app.post('/api/orders/:id/cancel', requireRole('admin'), async (req, res) => {
+  const id = positiveId(req.params.id)
+  if (!id) return res.status(400).json({ error: 'Invalid order id.' })
+
+  const { rows: [order] } = await pool.query(
+    `UPDATE orders SET status = 'canceled'
+     WHERE id = $1 AND status IN ('pending', 'paid')
+     RETURNING id, status`, [id])
+  if (!order) return res.status(404).json({ error: 'Cancel requires a pending or paid order.' })
+  res.json({ id: order.id, status: order.status })
+})
+
+app.post('/api/orders/:id/refund', requireRole('admin'), async (req, res) => {
+  const id = positiveId(req.params.id)
+  if (!id) return res.status(400).json({ error: 'Invalid order id.' })
+
+  const { rows: [order] } = await pool.query(
+    'SELECT id, status, stripe_session_id FROM orders WHERE id = $1', [id])
+  if (!order) return res.status(404).json({ error: 'Order not found.' })
+  if (order.status !== 'paid' || !order.stripe_session_id) {
+    return res.status(409).json({ error: 'Refund requires a paid order with a settled payment.' })
+  }
+
+  try {
+    const refundStatus = await refundCheckoutSession(order.stripe_session_id)
+    if (!refundStatus) {
+      return res.status(409).json({ error: 'Stripe reports no settled payment on this session.' })
+    }
+    await pool.query(
+      `UPDATE orders SET status = 'refunded' WHERE id = $1 AND status = 'paid'`, [id])
+    res.json({ id, status: 'refunded', refundStatus })
+  } catch (err) {
+    console.error('Stripe refund failed:', err.message)
+    res.status(502).json({ error: 'Refund failed at Stripe. Nothing was changed.' })
+  }
+})
+
 // Creates a pending order from the database price and opens Stripe's hosted
 // Checkout page. Signed in users only; the user id always comes from the
 // session, and prices/totals always come from the plans table.
-app.post('/api/orders/checkout', requireAuth, async (req, res) => {
-  if (!getStripeClient()) {
+app.post('/api/orders/checkout', requireAuth, async (req, res) => {  if (!getStripeClient()) {
     return res.status(503).json({ error: 'Online payments are not configured yet. Add STRIPE_SECRET_KEY to server/.env and restart.' })
   }
 

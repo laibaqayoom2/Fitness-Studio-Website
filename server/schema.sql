@@ -79,13 +79,19 @@ CREATE TABLE IF NOT EXISTS orders (
   id SERIAL PRIMARY KEY,
   reference TEXT NOT NULL UNIQUE,
   user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'paid', 'canceled')),
+  -- refunded: a settled payment was returned by the admin; the membership is
+  -- revoked but the money trail stays in Stripe's refund receipt.
+  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'paid', 'canceled', 'refunded')),
   stripe_session_id TEXT UNIQUE,
   amount_total INTEGER NOT NULL CHECK (amount_total >= 0),
   currency TEXT NOT NULL DEFAULT 'usd',
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   paid_at TIMESTAMPTZ
 );
+-- Existing databases may predate the refunded status; normalize the constraint.
+ALTER TABLE orders DROP CONSTRAINT IF EXISTS orders_status_check;
+ALTER TABLE orders ADD CONSTRAINT orders_status_check
+  CHECK (status IN ('pending', 'paid', 'canceled', 'refunded'));
 -- Orders with no Stripe session yet (e.g. Stripe not configured) are allowed:
 -- `stripe_session_id` is nullable and only set when Checkout is created.
 CREATE INDEX IF NOT EXISTS orders_user_id_idx ON orders (user_id);

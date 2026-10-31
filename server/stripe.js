@@ -109,6 +109,20 @@ export async function expireCheckoutSession(sessionId) {
   }
 }
 
+// Full refund for a completed Checkout Session. Resolves the PaymentIntent
+// from the session (the server never stored it separately) and refunds its
+// full amount. Returns null when there is nothing settled to refund.
+export async function refundCheckoutSession(sessionId) {
+  const stripe = assertStripeConfigured()
+  const session = await stripe.checkout.sessions.retrieve(sessionId)
+  const intent = typeof session.payment_intent === 'string'
+    ? session.payment_intent
+    : session.payment_intent?.id
+  if (!intent || session.payment_status !== 'paid') return null
+  const refund = await stripe.refunds.create({ payment_intent: intent })
+  return refund.status // e.g. 'succeeded' (test mode) / 'pending'
+}
+
 // Pure decision for resuming a pending order from a re-read session:
 // - 'paid'    → the payment settled (mark the order paid, like the webhook)
 // - 'open'    → the hosted page is still payable; return its url

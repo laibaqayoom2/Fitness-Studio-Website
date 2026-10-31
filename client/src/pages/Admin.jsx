@@ -7,11 +7,13 @@ import BookingsPanel from "./admin/BookingsPanel";
 import MessagesPanel from "./admin/MessagesPanel";
 import PlansPanel from "./admin/PlansPanel";
 import UsersPanel from "./admin/UsersPanel";
+import OrdersPanel from "./admin/OrdersPanel";
 import OverviewPanel from "./admin/OverviewPanel";
 import { cardClass } from "./admin/styles";
 
 const TABS = [
   { key: "overview", label: "Overview", roles: ["manager", "admin"] },
+  { key: "orders", label: "Orders", roles: ["admin"] },
   { key: "classes", label: "Classes", roles: ["manager", "admin"] },
   { key: "bookings", label: "Bookings", roles: ["manager", "admin"] },
   { key: "messages", label: "Messages", roles: ["admin"] },
@@ -129,6 +131,7 @@ export default function Admin() {
           {/* Right content */}
           <main className="min-w-0">
             {active === "overview" && <OverviewPanel onNavigate={changeTab} />}
+            {active === "orders" && <OrdersPanel />}
             {active === "classes" && <ClassesPanel />}
             {active === "bookings" && <BookingsPanel />}
             {active === "messages" && <MessagesPanel />}

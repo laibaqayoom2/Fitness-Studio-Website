@@ -3,11 +3,13 @@ import { Link } from 'react-router-dom'
 
 // Notifications are derived from the member's own bookings and plan orders —
 // a confirmed class booking or a completed (or pending) plan payment appears
-// here automatically. "Clear all" records the timestamp up to which items are
-// considered read, per signed-in user, in localStorage. No database changes.
-//
-// datasets: [{ id, bookings?, orders?, loading, error }]
+// here automatically. Seen state ("read") is per signed-in user, persisted in
+// localStorage; no database changes:
+//   - "Mark as seen" is available on every unread item,
+//   - "Mark all as seen" records a "cleared up to" timestamp, and anything
+//     older than it never counts as unread again.
 const clearedKey = (userId) => `ffl-notifications-cleared-${userId}`
+const seenStoreKey = (userId) => `ffl-notifications-seen-${userId}`
 
 function buildNotifications({ bookings, orders }) {
   const items = []
@@ -53,13 +55,21 @@ function buildNotifications({ bookings, orders }) {
   return items.sort((a, b) => b.at - a.at).slice(0, 8)
 }
 
-export default function Notifications({datasets = [], userId}) {
+export default function Notifications({ datasets = [], userId }) {
   const [open, setOpen] = useState(false)
   const menuRef = useRef(null)
   // "Cleared up to" comes from per-user localStorage via a lazy initializer so
   // the unread badge is correct on the very first render.
   const [clearedAt, setClearedAt] = useState(() =>
     userId ? Number(localStorage.getItem(clearedKey(userId)) ?? 0) : null)
+  const [seenKeys, setSeenKeys] = useState(() => {
+    try {
+      const parsed = JSON.parse(localStorage.getItem(seenStoreKey(userId)) ?? '[]')
+      return Array.isArray(parsed) ? parsed : []
+    } catch {
+      return []
+    }
+  })
 
   useEffect(() => {
     if (!open) return
@@ -80,10 +90,19 @@ export default function Notifications({datasets = [], userId}) {
   const items = datasets.flatMap(buildNotifications)
     .sort((a, b) => b.at - a.at)
     .slice(0, 8)
-  const unread = clearedAt === null ? [] : items.filter((item) => item.at > clearedAt)
-  const badgeCount = clearedAt === null ? 0 : unread.length
+  const isUnread = (item) => clearedAt !== null && item.at > clearedAt && !seenKeys.includes(item.key)
+  const unread = items.filter(isUnread)
+  const badgeCount = unread.length
 
-  const clearAll = () => {
+  const markSeen = (key) => {
+    setSeenKeys((prev) => {
+      const next = [key, ...prev.filter((k) => k !== key)].slice(0, 50)
+      localStorage.setItem(seenStoreKey(userId), JSON.stringify(next))
+      return next
+    })
+  }
+
+  const markAllSeen = () => {
     const until = Date.now()
     localStorage.setItem(clearedKey(userId), String(until))
     setClearedAt(until)
@@ -95,7 +114,7 @@ export default function Notifications({datasets = [], userId}) {
         type="button"
         aria-expanded={open}
         aria-controls="member-notifications"
-        aria-label={`Notifications${badgeCount > 0 ? `, ${badgeCount} new` : ''}`}
+        aria-label={`Notifications${badgeCount > 0 ? `, ${badgeCount} unseen` : ''}`}
         onClick={() => {
           const stored = Number(localStorage.getItem(clearedKey(userId)) ?? 0)
           setClearedAt(stored)
@@ -122,11 +141,11 @@ export default function Notifications({datasets = [], userId}) {
           <div className="flex items-center justify-between gap-2">
             <h2 className="text-[0.9rem] font-bold">Notifications</h2>
             {badgeCount > 0 ? (
-              <button type="button" onClick={clearAll} className="text-[0.7rem] text-brand transition hover:opacity-80">
-                Clear all ({badgeCount})
+              <button type="button" onClick={markAllSeen} className="text-[0.7rem] text-brand transition hover:opacity-80">
+                Mark all as seen ({badgeCount})
               </button>
             ) : (
-              <span className="text-[0.7rem] text-muted">All caught up</span>
+              <span className="text-[0.7rem] text-muted">All seen</span>
             )}
           </div>
 
@@ -142,13 +161,13 @@ export default function Notifications({datasets = [], userId}) {
             )}
             <ul className="grid gap-2">
               {items.map((item) => {
-                const isNew = clearedAt !== null && item.at > clearedAt
+                const isNew = isUnread(item)
                 return (
-                  <li key={item.key}>
+                  <li key={item.key} className="relative">
                     <Link
                       to={item.to}
                       onClick={() => setOpen(false)}
-                      className={`flex items-start gap-3 rounded-xl px-3 py-2.5 transition hover:bg-white/5 light:hover:bg-black/5 ${isNew ? 'bg-white/5 light:bg-black/5' : ''}`}
+                      className={`flex items-start gap-3 rounded-xl px-3 py-2.5 pr-12 transition hover:bg-white/5 light:hover:bg-black/5 ${isNew ? 'bg-white/5 light:bg-black/5' : ''}`}
                     >
                       <span aria-hidden="true" className={`mt-0.5 grid size-6 flex-none place-items-center rounded-full text-[0.7rem] font-bold ${isNew ? 'bg-brand/15 text-brand' : 'bg-white/5 text-muted light:bg-black/5'}`}>
                         {item.icon}
@@ -161,6 +180,15 @@ export default function Notifications({datasets = [], userId}) {
                         </time>
                       </span>
                     </Link>
+                    {isNew && (
+                      <button
+                        type="button"
+                        onClick={() => markSeen(item.key)}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full border border-line px-2 py-1 text-[0.6rem] text-muted transition hover:border-brand hover:text-brand"
+                      >
+                        Mark as seen
+                      </button>
+                    )}
                   </li>
                 )
               })}

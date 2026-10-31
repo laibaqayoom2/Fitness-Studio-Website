@@ -106,7 +106,10 @@ Orders left `pending` (checkout abandoned, or confirmation still travelling) sur
 
 ## 6. Notifications & account (member UX)
 
-* Header bell (all signed-in users) derived **client-side** from `/api/bookings/mine` + `/api/orders/mine`: confirmed bookings, purchased memberships, pending payments. Unread badge + **Clear all** persist a per-user timestamp in `localStorage['ffl-notifications-cleared-<userId>']` — items newer than it count as unread; no DB changes.
+* Header bell (all signed-in users) derived **client-side** from `/api/bookings/mine` + `/api/orders/mine`: confirmed bookings, purchased memberships, pending payments. No DB changes — seen state is per-user, per-browser `localStorage`:
+  * **Mark as seen** on each unread item → key stored in `localStorage['ffl-notifications-seen-<userId>']` (array of keys, capped at 50 so the store can't grow unbounded);
+  * **Mark all as seen** → "cleared up to" timestamp in `localStorage['ffl-notifications-cleared-<userId>']`; anything older never counts as unread again;
+  * an item is unread when it is newer than the cleared timestamp AND its key is not in the seen list; the badge counts exactly those.
 * Header name → **account dropdown**: My bookings & membership (`/account`), Dashboard (manager+), Log out. Mobile menu exposes the equivalent "My account" link.
 * `/account`: membership summary card + booking history (shared `BookingList`).
 
@@ -120,6 +123,9 @@ Orders left `pending` (checkout abandoned, or confirmation still travelling) sur
 ## 8. Admin dashboard (`/admin`)
 
 * `OverviewPanel`: totals (bookings, occupancy, open spots, resources, users) + **Payments card** — how many members have paid, how many checkouts are pending; 7-day booking trend, top classes by fill, today's classes.
+* `OrdersPanel` (admin-only tab): the full payment ledger (newest 200 orders, member name/email joined) with status filter chips and badges. Two actions, always behind a `window.confirm`:
+  * **Cancel** — `pending → canceled` (abandons a checkout; its Stripe page simply expires) or `paid → canceled` (revokes the membership outright; no money moves, that is what refund is for);
+  * **Refund** — only on `paid` orders: the full amount is returned through Stripe (`refunds.create` on the session's PaymentIntent) and the order becomes `refunded`, so `/account` no longer counts the membership as active. Stripe failures leave the order untouched (502); a session Stripe reports as unpaid gets a 409.
 * Tabbed panels share common styles (`styles.js`) and UI atoms (`ui.jsx`): classes CRUD, bookings browser + CSV export, messages inbox, trainers CRUD (with client-side photo compression), plans CRUD (price is whole dollars; featured plan styling), users management with role changes and self-deletion protection.
 
 ## 9. Database schema (all DDL idempotent)
@@ -133,7 +139,7 @@ Orders left `pending` (checkout abandoned, or confirmation still travelling) sur
 | `plans` | products: name, **price = whole dollars**, note, perks, featured, button style |
 | `bookings` / `booking_items` | member reservations; items reference classes with spot counts |
 | `contact_messages` | enquiry inbox (`status` new/read) |
-| `orders` | checkout orders: `reference` UNIQUE, `user_id` FK→users (cascade), `status` CHECK (pending/paid/canceled), `stripe_session_id` UNIQUE, `amount_total` in **cents**, `paid_at` |
+| `orders` | checkout orders: `reference` UNIQUE, `user_id` FK→users (cascade), `status` CHECK (pending/paid/canceled/**refunded** — `refunded` means the admin returned a settled payment; membership revoked), `stripe_session_id` UNIQUE, `amount_total` in **cents**, `paid_at` |
 | `order_items` | purchase-time snapshot: plan FK (restrict), plan_name, quantity, unit_amount (cents) |
 
 Never reset data by hand: `npm run migrate` applies DDL only; `npm run seed` truncates + reseeds demo content; `npm run seed:users` upserts demo accounts only.
@@ -143,6 +149,7 @@ Never reset data by hand: `npm run migrate` applies DDL only; `npm run seed` tru
 Public: `/api/classes` (GET), `/api/trainers` (GET), `/api/plans` (GET), `/api/contact` (POST, rate-limited + honeypot).
 Auth: `/api/auth/signup`, `/api/auth/login`, `/api/auth/logout`, `/api/auth/me`.
 Member (auth): `POST /api/bookings`, `GET /api/bookings/mine`, `POST /api/orders/checkout`, `GET /api/orders/mine`, `GET /api/orders/:id` (owner-scoped), `GET /api/orders/:id/checkout-url` (resume pending payment / webhook-failure reconciliation).
+Admin (orders ledger: `GET /api/orders/admin`; per-order actions: `POST /api/orders/:id/cancel` (pending checkout → canceled, or paid membership → canceled/revoked) and `POST /api/orders/:id/refund` (paid → refunded, full amount via Stripe)).
 Staff (manager+/admin): `/api/classes` (POST/PUT/DELETE), `/api/bookings` admin list, `/api/contact` (PATCH/DELETE), `/api/trainers` (POST/PUT/DELETE), `/api/plans` (POST/PUT/DELETE), `/api/users` (list/PATCH role/DELETE), `/api/dashboard`.
 Stripe: `POST /api/webhooks/stripe` (signature-verified; raw body).
 
